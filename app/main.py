@@ -13,7 +13,8 @@ from google.appengine.ext.webapp import util
 
 class MainHandler(webapp.RequestHandler):
     def get(self):
-        self.response.out.write(template.render("index.html", {}))
+        values = {} # This is the dictionary of template values passed to html
+        self.response.out.write(template.render("index.html", values))
 
 def main():
     application = webapp.WSGIApplication([

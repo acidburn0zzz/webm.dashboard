@@ -1,0 +1,37 @@
+body {
+  font-family: verdana;
+}
+
+.bold-font {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+#header {
+}
+
+#top { 
+  /*-webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+  border:1px solid #bbb;*/
+  
+  /* TODO: fix this silly resizing issue. */
+  padding-bottom:60px;
+  padding-top:5px;
+  margin-bottom:5px;
+}
+
+#topcolumn {
+  width:33%;
+  float:left;
+  background:#fff;
+  padding-bottom:10px;
+}
+
+#bottomcenter {
+  float:left;
+  width:100%;
+  background:#ddd;
+}
+

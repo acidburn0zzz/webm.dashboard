@@ -1,4 +1,68 @@
-<html><body>
-<h1>Hello, world!</h1>
-<h2> Welcome! </h2>
-</body></html>
+<html>
+<head>
+<title>WebM Dashboard</title>
+<link rel="stylesheet" type="text/css" href="/css/main.css"/>
+
+<!-- The majority of our javascript -->
+<script type="text/javascript" src="/js/jstree/_lib/jquery.js"></script>
+<script type="text/javascript" src="/js/jstree/jquery.jstree.js"></script>
+<link rel="stylesheet" type="text/css" href="/js/jquery-ui/css/smoothness/jquery-ui-1.8.21.custom.css" />
+<script type="text/javascript" src="/js/jquery-ui/js/jquery-ui-1.8.21.custom.min.js"></script>
+<script type="text/javascript" src="/js/treehandler.js"></script>
+
+</head>
+
+<body>
+
+<div id ="main"> <!-- This div exists to test some Jquery binding things -->
+<h1>Welcome!</h1>
+
+<div id="top">
+
+<div id="topcolumn">
+  <div id="treeView1">
+  </div>
+</div>
+
+<div id="topcolumn">
+  <div id="treeView2">
+  </div>
+</div>
+
+<div id="topcolumn">
+  <div id="treeView3">
+  </div>
+</div>
+
+</div> <!-- end of top -->
+
+<div id="bottomcenter">
+
+<!-- the tab widget -->
+<div id="tabs">
+  <ul class="tabnav">
+    <li><a href="#tabs1">Selection from Tree 1</a></li>
+    <li><a href="#tabs2">Selection from Tree 2</a></li>
+    <li><a href="#tabs3">Notes</a></li>
+  </ul>
+
+  <div id="tabs1" class="tabdiv">
+  </div>
+  <div id="tabs2" class="tabdiv">
+  </div>
+  <div id="tabs3" class="tabdiv">
+    <p>Lorem ipsum etc.</p>
+  </div>
+
+</div> <!-- end of tabs -->
+
+<div id="clearer">
+  <h3> Click here to clear all boxes. </h3>
+</div>
+
+
+</div> <!-- end of main -->
+
+
+</body>
+</html>
