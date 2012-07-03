@@ -104,6 +104,7 @@ class CodecMetric(db.Model):
 class CodecMetricIndex(db.Model):
     # parent = CodecMetric
     commit = db.StringProperty()
+    config_name = db.StringProperty()
     files = db.StringListProperty()
     metrics = db.StringListProperty()
 
@@ -116,11 +117,14 @@ class ImportCodecMetricHandler(webapp.RequestHandler):
 
             h = hashlib.sha1()
             h.update(parent.key().name())
+            h.update(parent.commit)
+            h.update(parent.config_name)
             map(h.update, metric_list)
             map(h.update, file_list)
             CodecMetricIndex(key_name=h.hexdigest(),
                              parent=parent,
                              commit=parent.commit,
+                             config_name=parent.config_name,
                              metrics=metric_list,
                              files=file_list).put()
 
@@ -158,6 +162,49 @@ class ImportCodecMetricHandler(webapp.RequestHandler):
             self.put_metric_index(m, metrics, files)
 
 
+def pretty_json(x):
+    return json.dumps(x, indent=2, sort_keys=True)
+
+class CodecMetricHandler(webapp.RequestHandler):
+    def get(self, metric, config, filename, commit):
+        """Fetches the requested metric data as JSON"""
+
+        indexes = CodecMetricIndex.all(keys_only = True)
+        indexes = indexes.filter('metrics =', metric)
+        indexes = indexes.filter('config_name =', config)
+        indexes = indexes.filter('files =', filename)
+        indexes = indexes.filter('commit =', commit)
+        keys = [k.parent() for k in indexes]
+
+        result=[]
+        for cm in db.get(keys):
+            for run in cm.data[filename]:
+                this_run_data = []
+
+                # TODO(jkoleszar): How do we handle this properly?
+                if "Bitrate" in run:
+                    this_run_data.append(run["Bitrate"])
+
+                this_run_data.append(run[metric])
+                result.append(this_run_data)
+
+        # Sanity checks
+        for r in result[1:]:
+            assert len(r) == len(result[0])
+
+        # Result is a list of lists. Sort by the first element of the nested
+        # list.
+        #
+        # TODO(jkoleszar): do we always want to sort? or do it on the client?
+        result = sorted(result, key=lambda x:x[0])
+
+        # Return the result
+        if result:
+            self.response.headers['Content-Type'] = 'application/json'
+            self.response.out.write(pretty_json(result))
+        else:
+            self.error(404)
+
 class MainHandler(webapp.RequestHandler):
     def get(self):
         values = {} # This is the dictionary of template values passed to html
@@ -168,6 +215,7 @@ def main():
         ('/', MainHandler),
         ('/import-commits', ImportCommitHandler),
         ('/import-codec-metrics', ImportCodecMetricHandler),
+        (r'/metric-data/(.*)/(.*)/(.*)/(.*)', CodecMetricHandler),
     ], debug=True)
     util.run_wsgi_app(application)
 
