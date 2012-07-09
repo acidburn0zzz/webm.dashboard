@@ -221,12 +221,17 @@ class MainHandler(webapp.RequestHandler):
         values = {} # This is the dictionary of template values passed to html
         self.response.out.write(template.render("index.html", values))
 
+class ChartHandler(webapp.RequestHandler):
+    def get(self):
+        self.response.out.write(template.render("graph.html", {}))
+
 def main():
     application = webapp.WSGIApplication([
         ('/', MainHandler),
         ('/import-commits', ImportCommitHandler),
         ('/import-codec-metrics', ImportCodecMetricHandler),
         (r'/metric-data/(.*)/(.*)/(.*)/(.*)', CodecMetricHandler),
+        ('/graph', ChartHandler)
     ], debug=True)
     util.run_wsgi_app(application)
 

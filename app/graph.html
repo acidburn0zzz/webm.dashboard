@@ -1,0 +1,79 @@
+<html>
+<head>
+<title> Graph Test </title>
+
+<!--Load the necessary jquery, google visualization APIs-->
+<script type="text/javascript" src="/js/jstree/_lib/jquery.js"></script>
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript">
+
+google.load('visualization', '1.0', {'packages':['corechart', 'table']});
+google.setOnLoadCallback(ChartFiller); 
+
+
+function ChartFiller() {
+  var response1, response2;
+
+  // Wait until all data is fetched to generate graphs
+  $(document).ajaxStop(function() {
+    $(this).unbind("ajaxStop");
+    drawChart(response1, response2);
+  });
+
+  // Get the first set of data pairs
+  $.ajax({
+    type: "GET",
+    url: "/metric-data/GLBPsnr/good/bus_cif.y4m/52ec78be7d6c8f103e63a76e3e14ded48ccd5cd7",
+    success: function(response){
+      response1 = response;
+    },
+  });
+
+  // Get the second set - this should not be the same url in practice
+  $.ajax({
+    type: "GET",
+    url: "/metric-data/GLBPsnr/good/bus_cif.y4m/52ec78be7d6c8f103e63a76e3e14ded48ccd5cd7",
+    success: function(response){
+      response2 = response;
+    },
+  });
+}
+
+
+function drawChart(data_in1, data_in2) {
+  var data1 = new google.visualization.DataTable();
+  data1.addColumn('number', 'X');
+  data1.addColumn('number', 'Y');
+  data1.addRows(data_in1);
+
+  var data2 = new google.visualization.DataTable();
+  data2.addColumn('number', 'X');
+  data2.addColumn('number', 'Z');
+  data2.addRows(data_in2);
+
+  // Join the two tables into one view
+  var view = new google.visualization.data.join(data1, data2, 'full', [[0,0]], [1], [1]);
+  //$("#result").text(view.toJSON());
+
+  // Set chart options
+  var options = {'title':'Test Graph',
+                 'width':400,
+                 'height':300};
+
+  // Instantiate and draw our chart, passing in some options.
+  var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+  var table = new google.visualization.Table(document.getElementById('table_div'));
+  chart.draw(view, options);
+  table.draw(view, options);
+}
+</script>
+
+</head>
+  <body>
+    <!--Div that will hold the chart-->
+    <div id="result"></div>
+    <div id="chart_div"></div>
+    <div id="table_div"></div>
+  </body>
+</html>
+
