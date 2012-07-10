@@ -13,5 +13,8 @@ handlers:
 - url: /js
   static_dir: js
 
+- url: /drilldown/.*
+  script: drilldown.py
+
 - url: .*
   script: main.py

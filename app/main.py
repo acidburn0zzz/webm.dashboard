@@ -25,6 +25,8 @@ import json
 import pickle
 import StringIO
 
+from drilldown import drilldown
+
 class Commit(db.Model):
     author = db.StringProperty()
     author_time = db.DateTimeProperty()
@@ -128,6 +130,13 @@ class ImportCodecMetricHandler(webapp.RequestHandler):
                              metrics=metric_list,
                              files=file_list).put()
 
+    def update_drilldown(self, parent, metrics, files):
+        # TODO(jkoleszar): if drilldown is moved to a backend, maybe post this
+        # through a task queue.
+        commit = set([parent.commit])
+        config = set([parent.config_name])
+        drilldown.insert(metrics, set(config), files, set(commit))
+
     def post(self):
         for line in StringIO.StringIO(self.request.get("data")):
             # Key off a hash of the input line to make the import idempotent
@@ -156,11 +165,13 @@ class ImportCodecMetricHandler(webapp.RequestHandler):
                     this_metrics = set(metric_entry.keys())
                     if this_metrics != metrics:
                         self.put_metric_index(m, metrics, files)
+                        self.update_drilldown(m, metrics, files)
                         metrics = this_metrics
                         files = set()
                     files.add(filename)
             self.put_metric_index(m, metrics, files)
-
+            self.update_drilldown(m, metrics, files)
+        drilldown.save()
 
 def pretty_json(x):
     return json.dumps(x, indent=2, sort_keys=True)
