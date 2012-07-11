@@ -20,6 +20,7 @@ from google.appengine.ext.webapp import util
 from google.appengine.ext import db
 
 import json
+import urllib
 
 class DrilldownMatrixEntry(db.Model):
     """A non-sparse 4-dimensional matrix (DME)
@@ -163,7 +164,7 @@ class DrilldownMatrix(object):
         """Reinitialize the object, forcing the data to be refetched"""
         self.__init__()
 
-    def query(self, metric=None, config=None, filename=None, commit=None):
+    def query_(self, metric=None, config=None, filename=None, commit=None):
         """Returns a subset of the matrix matching the given parameters"""
         def match_only(entry, params, field):
             """Does the entry match on only a single field"""
@@ -199,6 +200,27 @@ class DrilldownMatrix(object):
                 result[idx] = set()
 
         # TODO(jkoleszar): need to format this jstree friendly
+        return result
+
+    def query(self, metric, config, filename, commit):
+        def split_field(field):
+            if field:
+                for f in urllib.unquote(field).split(","):
+                    yield f
+            else:
+                yield None
+
+        result = None
+        for m in split_field(metric):
+            for cfg in split_field(config):
+                for f in split_field(filename):
+                    for cm in split_field(commit):
+                        if not result:
+                            result = self.query_(m,cfg,f,cm)
+                        else:
+                            r = self.query_(m,cfg,f,cm)
+                            for idx in range(4):
+                                result[idx] = result[idx].intersection(r[idx])
         return result
 
 drilldown = DrilldownMatrix()
