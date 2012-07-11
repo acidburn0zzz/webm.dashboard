@@ -10,23 +10,26 @@ body {
 #header {
 }
 
-#top { 
+#top {
   /*-webkit-border-radius: 4px;
   -moz-border-radius: 4px;
   border-radius: 4px;
   border:1px solid #bbb;*/
-  
+
   /* TODO: fix this silly resizing issue. */
   padding-bottom:60px;
   padding-top:5px;
   margin-bottom:5px;
+  max-height: 400px;
 }
 
 #topcolumn {
-  width:33%;
+  width:25%;
   float:left;
   background:#fff;
   padding-bottom:10px;
+  max-height: 400px;
+  overflow-y: scroll;
 }
 
 #bottomcenter {

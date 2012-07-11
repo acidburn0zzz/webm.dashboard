@@ -8,32 +8,88 @@
 <script type="text/javascript" src="/js/jstree/jquery.jstree.js"></script>
 <link rel="stylesheet" type="text/css" href="/js/jquery-ui/css/smoothness/jquery-ui-1.8.21.custom.css" />
 <script type="text/javascript" src="/js/jquery-ui/js/jquery-ui-1.8.21.custom.min.js"></script>
-<script type="text/javascript" src="/js/treehandler.js"></script>
 
 <!-- Making an AJAX request to a local server function ------------------------>
 <script type="text/javascript" src="/js/json2.js"></script>
 <script type="text/javascript">
 
-// Making requests with Jquery
-function RequestTest() {
+var MetricState = new Array();
+var ConfigState = new Array();
+var FileState = new Array();
+var CommitState = new Array();
+
+</script>
+<script type="text/javascript" src="/js/treehandler.js"></script>
+
+<!-- the AJAX API for google charts -->
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script>
+google.load('visualization', '1.0', {'packages':['corechart', 'table']});
+
+function ChartFiller() {
+  var response1;
+
+  // Wait until all data is fetched to generate graphs
+  $(document).ajaxStop(function() {
+    $(this).unbind("ajaxStop");
+    if (response1) {
+      drawChart(response1, response1);
+    }
+    else {
+      $('#tabs1').html("Not a valid run");
+    }
+  });
+
+  // We put together a url
+  var metric = MetricState[0];
+  var config = ConfigState[0];
+  var file = FileState[0];
+  var commit = CommitState[0];
+
   $.ajax({
     type: "GET",
-    url: "/metric-data/GLBPsnr/good/bus_cif.y4m/52ec78be7d6c8f103e63a76e3e14ded48ccd5cd7",
-    //data: data,
+    url: "/metric-data/" + metric + "/" + config + "/" + file + "/" + commit,
     success: function(response){
-      alert(response);
-      $("#result").text(response);
-    },
-    error: function(textStatus){
-      alert("Something went wrong");
+      response1 = response;
     },
   });
 }
 
+function drawChart(data_in1, data_in2) {
+  var data1 = new google.visualization.DataTable();
+  data1.addColumn('number', 'X');
+  data1.addColumn('number', 'Y');
+  data1.addRows(data_in1);
+
+  var data2 = new google.visualization.DataTable();
+  data2.addColumn('number', 'X');
+  data2.addColumn('number', 'Z');
+  data2.addRows(data_in2);
+
+  // Join the two tables into one view
+  var view = new google.visualization.data.join(data1, data2, 'full', [[0,0]], [1], [1]);
+  //$("#result").text(view.toJSON());
+
+  // Set chart options
+  var options = {title:'Test Graph',
+                 width:400,
+                 height:300,
+                 hAxis: {title: 'x axis'},
+                 vAxis: {title: 'y axis'},
+                 'pointSize':2,
+                 'lineWidth':1,
+                 'interpolateNulls':true,
+                };
+
+  // Instantiate and draw our chart, passing in some options.
+  var chart = new google.visualization.LineChart(document.getElementById('tabs1'));
+  var table = new google.visualization.Table(document.getElementById('tabs2'));
+  chart.draw(view, options);
+  table.draw(view, options);
+}
+
 </script>
 
-<!-- the AJAX API for google charts -->
-<script type="text/javascript" src="https://www.google.com/jsapi"></script>
 
 <!-- ----------------------------------------------------------------------- -->
 </head>
@@ -57,6 +113,11 @@ function RequestTest() {
 
 <div id="topcolumn">
   <div id="treeView3">
+  </div>
+</div>
+
+<div id="topcolumn">
+  <div id="treeView4">
   </div>
 </div>
 
