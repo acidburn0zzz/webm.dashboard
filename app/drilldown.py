@@ -91,7 +91,7 @@ class DrilldownMatrixEntryProxy(object):
         # Unmergeable.
         return False
 
-    def field_issubset(self, new_entry, field):\
+    def field_issubset(self, new_entry, field):
         """Is the new entity a subset of this one for a given field?"""
         return new_entry._data[field].issubset(self._data[field])
 
