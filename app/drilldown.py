@@ -165,23 +165,38 @@ class DrilldownMatrix(object):
 
     def query(self, metric=None, config=None, filename=None, commit=None):
         """Returns a subset of the matrix matching the given parameters"""
-        def match(entry, params):
+        def match_only(entry, params, field):
+            """Does the entry match on only a single field"""
+            if params[field]:
+                return params[field] in entry._data[field]
+            # No constraint given on this field, so it matches.
+            return True
+
+        def match_all_but(entry, params, exclude_field):
+            """Does the entry matches all but one field"""
             for idx in range(4):
-                if params[idx] and params[idx] not in entry._data[idx]:
+                if idx == exclude_field:
+                    continue
+                if not match_only(entry, params, idx):
                     return False
             return True
 
         params = (metric, config, filename, commit)
         result = [set(), set(), set(), set()]
+        found = [not bool(x) for x in params]
         for e in self.entries():
-            if not match(e, params):
-                continue
             for idx in range(4):
-                if params[idx]:
-                    # TODO(jkoleszar): do we want to filter like this?
-                    result[idx] = result[idx].union(set([params[idx]]))
-                else:
+                if params[idx] and match_only(e, params, idx):
+                    found[idx] = True
+                if match_all_but(e, params, idx):
                     result[idx] = result[idx].union(e._data[idx])
+
+        # If there were no matches for a given field, don't return anything.
+        # This shouldn't happen if the queries are limited to the results
+        # returned by previous invokations of this function.
+        for idx in range(4):
+            if not found[idx]:
+                result[idx] = set()
 
         # TODO(jkoleszar): need to format this jstree friendly
         return result
