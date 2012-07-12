@@ -27,12 +27,22 @@ import StringIO
 
 from drilldown import drilldown
 
+class File(db.Model):
+    # key_name is the filename
+    display_name = db.StringProperty()
+    file_sets = db.StringListProperty()
+
+class FileSet(db.Model):
+    # key_name is the file set name
+    display_name = db.StringProperty()
+
 class Commit(db.Model):
     author = db.StringProperty()
     author_time = db.DateTimeProperty()
     committer = db.StringProperty()
     commit_time = db.DateTimeProperty()
     message = db.TextProperty()
+    branches = db.StringListProperty()
 
 
 class ImportCommitHandler(webapp.RequestHandler):
@@ -138,6 +148,7 @@ class ImportCodecMetricHandler(webapp.RequestHandler):
         drilldown.insert(metrics, set(config), files, set(commit))
 
     def post(self):
+        files_added = set()
         for line in StringIO.StringIO(self.request.get("data")):
             # Key off a hash of the input line to make the import idempotent
             key = hashlib.sha1(line).hexdigest()
@@ -171,6 +182,16 @@ class ImportCodecMetricHandler(webapp.RequestHandler):
                     files.add(filename)
             self.put_metric_index(m, metrics, files)
             self.update_drilldown(m, metrics, files)
+
+            # Add files to datastore if this is the first time seen
+            for filename in files:
+                if filename not in files_added:
+                  # TODO: Is there a better way of assigning display names?
+                  split_index = filename.find(".")
+                  File(key_name=filename,
+                       display_name=filename[:split_index],
+                       file_sets=[]).put()
+                  files_added.add(filename)
         drilldown.save()
 
 def pretty_json(x):
