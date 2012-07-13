@@ -7,6 +7,9 @@ for f in ${dir}/*.json; do
       *commits.json)
          curl -F data=@${f} http://localhost:8080/import-commits
          ;;
+      *filesets.json)
+         curl -F data=@${f} http://localhost:8080/import-filesets
+         ;;
       *)
          curl -F data=@${f} http://localhost:8080/import-codec-metrics
          ;;
