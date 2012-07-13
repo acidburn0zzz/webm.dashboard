@@ -13,6 +13,14 @@
 <script type="text/javascript" src="/js/json2.js"></script>
 <script type="text/javascript">
 
+function range(start, end)
+{
+  var foo = [];
+  for (var i = start; i <= end; i++)
+    foo.push(i);
+  return foo;
+}
+
 var MetricState = new Array();
 var ConfigState = new Array();
 var FileState = new Array();
@@ -27,53 +35,81 @@ var CommitState = new Array();
 google.load('visualization', '1.0', {'packages':['corechart', 'table']});
 
 function ChartFiller() {
-  var response1;
+  var responses = new Array();
+
+  var queryNum = MetricState.length * ConfigState.length *
+                 FileState.length * CommitState.length;
+  //$('#tabs3').html(queryNum);
 
   // Wait until all data is fetched to generate graphs
   $(document).ajaxStop(function() {
     $(this).unbind("ajaxStop");
-    if (response1) {
-      drawChart(response1, response1);
+    if (responses) {
+      drawChart(responses);
     }
     else {
       $('#tabs1').html("Not a valid run");
     }
   });
 
-  // We put together a url
-  var metric = MetricState[0];
-  var config = ConfigState[0];
-  var file = FileState[0];
-  var commit = CommitState[0];
+  // Ew, quadruple nested loop
+  for (var i = 0; i < MetricState.length; i++) {
+    for (var j = 0; j < ConfigState.length; j++) {
+      for (var k = 0; k < FileState.length; k++) {
+        for (var t = 0; t < CommitState.length; t++) {
+          // We put together a url
+          var metric = MetricState[i];
+          var config = ConfigState[j];
+          var file = FileState[k];
+          var commit = CommitState[t];
 
-  $.ajax({
-    type: "GET",
-    url: "/metric-data/" + metric + "/" + config + "/" + file + "/" + commit,
-    success: function(response){
-      response1 = response;
-    },
-  });
+          $.ajax({
+            type: "GET",
+            url: "/metric-data/" + metric + "/" + config + "/" + file + "/" + commit,
+            success: function(response){
+              responses.push(response);
+            },
+          });
+        }
+      }
+    }
+  }
 }
 
-function drawChart(data_in1, data_in2) {
+function drawChart(data_in) {
+  var numCurves = data_in.length;
+  $('#tabs3').html(numCurves);
+  var view;
+  var data2;
+
+  // We have at least one curve
+  data_in1 = data_in[0];
+
   var data1 = new google.visualization.DataTable();
   data1.addColumn('number', 'X');
   data1.addColumn('number', 'Y');
   data1.addRows(data_in1);
+  view = new google.visualization.DataView(data1);
 
-  var data2 = new google.visualization.DataTable();
-  data2.addColumn('number', 'X');
-  data2.addColumn('number', 'Z');
-  data2.addRows(data_in2);
+  for (var i = 1; i < numCurves; i++){
+    data_in2 = data_in[i];
+    data2 = new google.visualization.DataTable();
+    data2.addColumn('number', 'X');
+    data2.addColumn('number', 'Z' + i.toString());
+    data2.addRows(data_in2);
 
-  // Join the two tables into one view
-  var view = new google.visualization.data.join(data1, data2, 'full', [[0,0]], [1], [1]);
+    // A list of numbers from 1 to i
+    leftColumns = range(1, i);
+
+    // Join the two tables into one view
+    view = new google.visualization.data.join(view, data2, 'full', [[0,0]], leftColumns, [1]);
+  }
   //$("#result").text(view.toJSON());
 
   // Set chart options
   var options = {title:'Test Graph',
-                 width:400,
-                 height:300,
+                 width:600,
+                 height:500,
                  hAxis: {title: 'x axis'},
                  vAxis: {title: 'y axis'},
                  'pointSize':2,
