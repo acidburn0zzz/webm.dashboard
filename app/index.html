@@ -126,6 +126,17 @@ function drawChart(data_in) {
 
 </script>
 
+<script>
+$(function() {
+  $( "#topcenter" ).resizable({
+    handles: 's',
+    stop: function(event, ui) {
+      $(this).css("width", '');
+    }
+  });
+});
+</script>
+
 
 <!-- ----------------------------------------------------------------------- -->
 </head>
@@ -135,7 +146,7 @@ function drawChart(data_in) {
 <div id ="main"> <!-- This div exists to test some Jquery binding things -->
 <h1>Welcome!</h1>
 
-<div id="top">
+<div id="topcenter" class="ui-widget-content">
 
 <div id="topcolumn">
   <div id="treeView1">
