@@ -4,7 +4,9 @@
 // The default configuration for checkboxes.
 function treeConfig(TreeModel) {
   return {
-    core : {},
+    core : {
+      animation : 0,
+    },
     themes : {
       dots : false,
       icons : false,
@@ -12,7 +14,7 @@ function treeConfig(TreeModel) {
     json_data : {
       data : TreeModel
     },
-    "plugins" : ["themes", "json_data", "ui", "checkbox"],
+    "plugins" : ["themes", "json_data", "ui", "checkbox", "sort"],
     "checkbox" : {
       two_state: true,
       real_checkboxes: true,
@@ -34,6 +36,7 @@ function TreeHandler() {
   txt.innerHTML = MetricState.toString() + ConfigState.toString() +
                   FileState.toString() + CommitState.toString();
 
+
   // We put together a url for drilldown - separated by commas (no spaces)
   var metrics = MetricState.join(",");
   var configs = ConfigState.join(",");
@@ -44,12 +47,12 @@ function TreeHandler() {
     type: "GET",
     url: "/drilldown/" + metrics + "/" + configs + "/" + files + "/" + commits,
     success: function(response){
-      //$("#result").text(response); // for debugging
+      // $("#result").text(response); // for debugging;
       drillArray = eval(response);
-      newMetricList = drillArray[0].sort();
-      newConfigList = drillArray[1].sort();
-      newFileList = drillArray[2].sort();
-      newCommitList = drillArray[3].sort();
+      newMetricList = drillArray[0];
+      newConfigList = drillArray[1];
+      newFileList = drillArray[2];
+      newCommitList = drillArray[3];
 
       // Now we update all the trees
       oldMetricState = MetricState.slice(0);
@@ -101,13 +104,41 @@ function initTree(divName, ContentsList, StateList){
 
 // Called when trees are updated (via drilldown)
 function resetTree(divName, ContentsList, StateList, OldStateList) {
+  currentTree = $.jstree._reference(divName);
+  var openList = [];
+
+  if (currentTree){
+    node = currentTree._get_node(currentTree.get_container());
+    node = currentTree._get_next(node);
+    while (node) {
+      if (currentTree.is_open(node)){
+        nodeName = node.children("a").text();
+        openList.push(nodeName);
+      }
+      node = currentTree._get_next(node);
+    }
+  }
+
   $(divName).empty();
   initTree(divName, ContentsList, StateList);
 
-  // Make sure we recheck the appropriate boxes
+  // Make sure we recheck the appropriate boxes and open the right nodes
   $(divName).bind("loaded.jstree", function () {
     currentTree = $.jstree._reference(divName);
-    // we step through the tree
+    // we reopen the right nodes
+    node = currentTree._get_node(currentTree.get_container());
+    node = currentTree._get_next(node);
+    while (node) {
+      nodeName = node.children("a").text();
+      if (nodeName.length < 1)
+        break;
+      if (openList.indexOf(nodeName) != -1) {
+        currentTree.open_node(node);
+      }
+      node = currentTree._get_next(node);
+    }
+
+    // we step through the tree to re-check nodes
     node = currentTree._get_node(currentTree.get_container());
     node = currentTree._get_next(node);
     while (node) {
