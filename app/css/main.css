@@ -27,7 +27,18 @@ body {
 }
 
 #topcolumn {
-  width:24%;
+  width:32%;
+  float:left;
+  background:#fff;
+  /*padding-bottom:10px;*/
+  /*max-height: 400px; */
+  height: 100%;
+  overflow: auto;
+  padding: 5px;
+}
+
+#topcolumnsm {
+  width:15%;
   float:left;
   background:#fff;
   /*padding-bottom:10px;*/
