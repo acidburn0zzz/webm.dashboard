@@ -57,7 +57,7 @@ class ImportFileSetHandler(webapp.RequestHandler):
         # We now update the database with the elements in files_added
         for filename in files_added:
             # TODO: Is there a better way of assigning display names?
-            split_index = filename.find(".")
+            split_index = filename.rfind("_")
             File(key_name=filename,
                  display_name=filename[:split_index],
                  file_sets=files_added[filename]).put()
