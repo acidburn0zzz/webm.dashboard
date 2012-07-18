@@ -32,22 +32,31 @@ function treeConfig(TreeModel) {
 // -----------------------------------------------------------------------------
 // A function that is called whenever any tree is updated
 function TreeHandler() {
+
   var txt = document.getElementById("tabs1");
   txt.innerHTML = MetricState.toString() + ConfigState.toString() +
                   FileState.toString() + CommitState.toString();
 
+  // To remove the parent node information before sending the request
+  // Note: We specify the parent node's id with a preceeding underscore.
+  // This naming is taken care of on the server side.
+  function removeParents(element, index, array) {
+    return (element[0] !== "_");
+  }
 
   // We put together a url for drilldown - separated by commas (no spaces)
   var metrics = MetricState.join(",");
   var configs = ConfigState.join(",");
-  var files = FileState.join(",");
-  var commits = CommitState.join(",");
+  var files = FileState.filter(removeParents).join(",");
+  var commits = CommitState.filter(removeParents).join(",");
+  var drillurl = "/drilldown/" + metrics + "/" + configs + "/" + files + "/" + commits;
+  $("#tabs1").text(drillurl);
 
   $.ajax({
     type: "GET",
-    url: "/drilldown/" + metrics + "/" + configs + "/" + files + "/" + commits,
+    url: drillurl,
     success: function(response){
-      // $("#result").text(response); // for debugging;
+      //$("#result").text(response); // for debugging;
       drillArray = eval(response);
       newMetricList = drillArray[0];
       newConfigList = drillArray[1];
@@ -89,13 +98,39 @@ function initTree(divName, ContentsList, StateList){
     if ((tagName == "A" || tagName == "INS") &&
       (refreshing != true && refreshing != "undefined")) {
       // If there is a state change, we modify the state Array
+
+      // We do a few extras when it is a parent node
+      // if we are checking this, we adjust the children accordingly.
+      var id, childrenCount, children;
+      if (tagName == "A") {
+        id = $(divName).jstree('get_selected').attr('id');
+        children = $("#" + id).children("ul").children("li");
+      }
+      else {
+        id = d.rslt.attr("id");
+        children = d.rslt.children("ul").children("li");
+      }
+      var childrenCount = children.length;
+      var checked = $("#" + id + ".jstree-checked").length!=0;
+
+      if (checked && (childrenCount > 0)) {
+        children.each(function() {
+          $(divName).jstree("check_node", this);
+        });
+      }
+      else if (!checked && (childrenCount > 0)) {
+        children.each(function() {
+          $(divName).jstree("uncheck_node", this);
+        });
+      }
+
       StateList.length = 0;
       // Get all selected nodes (by name)
       $(divName).jstree("get_checked").each(function(key, value){
-        // We strip the 2 leading characters (ascii code 160)
-        val = $(value).children("a").text();
-        StateList.push(val.slice(2, val.length));
+        val = $(value).attr('id');
+        StateList.push(val);
       });
+
       TreeHandler();
     }
   });
@@ -142,13 +177,11 @@ function resetTree(divName, ContentsList, StateList, OldStateList) {
     node = currentTree._get_node(currentTree.get_container());
     node = currentTree._get_next(node);
     while (node) {
-      nodeName = node.children("a").text();
-      nodeName = nodeName.slice(2, nodeName.length);
-      if (nodeName.length < 1)
-        break;
-      if (OldStateList.indexOf(nodeName) != -1) {
+      nodeID = node.attr("id");
+      if (OldStateList.indexOf(nodeID) != -1) {
         $(divName).jstree("check_node", node);
       }
+
       node = currentTree._get_next(node);
     }
   });
