@@ -18,3 +18,6 @@ handlers:
 
 - url: .*
   script: main.py
+
+includes:
+- mapreduce/include.yaml
