@@ -67,7 +67,7 @@ function ChartFiller() {
             type: "GET",
             url: "/metric-data/" + metric + "/" + config + "/" + file + "/" + commit,
             success: function(response){
-              responses.push(response);
+              responses.push([response, this.url]);
             },
           });
         }
@@ -83,19 +83,20 @@ function drawChart(data_in) {
   var data2;
 
   // We have at least one curve
-  data_in1 = data_in[0];
+  data_in1 = data_in[0][0];
 
   var data1 = new google.visualization.DataTable();
   data1.addColumn('number', 'X');
-  data1.addColumn('number', 'Y');
+  data1.addColumn('number', data_in[0][1].slice(13, -32));
   data1.addRows(data_in1);
   view = new google.visualization.DataView(data1);
 
   for (var i = 1; i < numCurves; i++){
-    data_in2 = data_in[i];
+    data_in2 = data_in[i][0];
     data2 = new google.visualization.DataTable();
     data2.addColumn('number', 'X');
-    data2.addColumn('number', 'Z' + i.toString());
+
+    data2.addColumn('number',  data_in[i][1].slice(13, -32));
     data2.addRows(data_in2);
 
     // A list of numbers from 1 to i
@@ -104,24 +105,30 @@ function drawChart(data_in) {
     // Join the two tables into one view
     view = new google.visualization.data.join(view, data2, 'full', [[0,0]], leftColumns, [1]);
   }
-  //$("#result").text(view.toJSON());
+  //$("#tabs3").text(view.toJSON());
 
   // Set chart options
-  var options = {title:'Test Graph',
-                 width:600,
-                 height:500,
+  var chartOptions = {title:'Test Graph',
+                 width:800,
+                 height:600,
+                 chartArea: {left: 50, width: "55%"},
                  hAxis: {title: 'x axis'},
                  vAxis: {title: 'y axis'},
                  'pointSize':2,
                  'lineWidth':1,
                  'interpolateNulls':true,
                 };
+  var tableOptions = {title:'Test Graph',
+                 hAxis: {title: 'x axis'},
+                 vAxis: {title: 'y axis'},
+                 'interpolateNulls':true,
+                };
 
   // Instantiate and draw our chart, passing in some options.
   var chart = new google.visualization.LineChart(document.getElementById('tabs1'));
   var table = new google.visualization.Table(document.getElementById('tabs2'));
-  chart.draw(view, options);
-  table.draw(view, options);
+  chart.draw(view, chartOptions);
+  table.draw(view, tableOptions);
 }
 
 </script>
