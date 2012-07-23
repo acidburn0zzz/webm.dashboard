@@ -44,28 +44,31 @@ function ChartFiller() {
   // Wait until all data is fetched to generate graphs
   $(document).ajaxStop(function() {
     $(this).unbind("ajaxStop");
-    if (responses) {
+    if (responses.length > 0) {
       drawChart(responses);
     }
     else {
-      $('#tabs1').html("Not a valid run");
+      $('#tabs11').html("Please select a valid run.");
     }
   });
 
+  var files = FileState.filter(removeParents);
+  var commits = CommitState.filter(removeParents);
   // Ew, quadruple nested loop
   for (var i = 0; i < MetricState.length; i++) {
     for (var j = 0; j < ConfigState.length; j++) {
-      for (var k = 0; k < FileState.length; k++) {
-        for (var t = 0; t < CommitState.length; t++) {
+      for (var k = 0; k < files.length; k++) {
+        for (var t = 0; t < commits.length; t++) {
           // We put together a url
           var metric = MetricState[i];
           var config = ConfigState[j];
-          var file = FileState[k];
-          var commit = CommitState[t];
+          var file = files[k];
+          var commit = commits[t];
+          metricurl = "/metric-data/" + metric + "/" + config + "/" + file + "/" + commit
 
           $.ajax({
             type: "GET",
-            url: "/metric-data/" + metric + "/" + config + "/" + file + "/" + commit,
+            url: metricurl,
             success: function(response){
               responses.push([response, this.url]);
             },
@@ -76,9 +79,69 @@ function ChartFiller() {
   }
 }
 
+function StatisticFiller() {
+  // This function is reponsible for filling a table with the composite metrics
+  // for each file
+
+  // We ask the backend for a chart to display - based on metric, fileset,
+  // config, and commit selected.
+
+  var metrics = MetricState.join(",");
+  var configs = ConfigState.join(",");
+  var files = FileState.filter(removeParents).join(",");
+  var commits = CommitState.filter(removeParents).join(",");
+  var compurl = "/average-improvement/" + metrics + "/" + configs + "/" + files + "/" + commits;
+
+  // What baseline should the curves be compared to?
+  $.ajax({
+    type: "GET",
+    url: compurl,
+    success: function(response){
+      response = eval(response);
+      if (response.length > 0) {
+        //$('#tabs3').html(response);
+        ImprovementTable(response);
+      }
+    },
+  });
+
+}
+
+function ImprovementTable(data_in) {
+  numCol = data_in.length;
+  var data1 = new google.visualization.DataTable();
+  var view;
+  var data2;
+
+  // We fill our table
+  data1.addColumn('string', 'Filename');
+  data1.addColumn('number', data_in[0].col);
+  data1.addRows(data_in[0].data);
+
+  // Make it a chart
+  view = new google.visualization.DataView(data1);
+
+  for (var i = 1; i < numCol; i++){
+    data2 = new google.visualization.DataTable();
+    data2.addColumn('string', 'Filename');
+    data2.addColumn('number',  data_in[i].col);
+    data2.addRows(data_in[i].data);
+
+    // A list of numbers from 1 to i
+    leftColumns = range(1, i);
+
+    // Join the two tables into one view
+    view = new google.visualization.data.join(view, data2, 'full', [[0,0]], leftColumns, [1]);
+  }
+  var tableOptions = {width: 'automatic'};
+
+  var table = new google.visualization.Table(document.getElementById("tabs11"));
+  table.draw(view, tableOptions);
+}
+
+
 function drawChart(data_in) {
   var numCurves = data_in.length;
-  $('#tabs3').html(numCurves);
   var view;
   var data2;
 
@@ -118,15 +181,12 @@ function drawChart(data_in) {
                  'lineWidth':1,
                  'interpolateNulls':true,
                 };
-  var tableOptions = {title:'Test Graph',
-                 hAxis: {title: 'x axis'},
-                 vAxis: {title: 'y axis'},
-                 'interpolateNulls':true,
-                };
+  var tableOptions = {width: 'automatic'};
 
   // Instantiate and draw our chart, passing in some options.
-  var chart = new google.visualization.LineChart(document.getElementById('tabs1'));
-  var table = new google.visualization.Table(document.getElementById('tabs2'));
+  div = document.getElementById("poop");
+  var chart = new google.visualization.LineChart(document.getElementById("tabs12"));
+  var table = new google.visualization.Table(document.getElementById("tabs2"));
   chart.draw(view, chartOptions);
   table.draw(view, tableOptions);
 }
@@ -151,7 +211,7 @@ $(function() {
 <body>
 
 <div id ="main"> <!-- This div exists to test some Jquery binding things -->
-<h1>Welcome!</h1>
+<h1>WebM Development Dashboard</h1>
 
 <div id="topcenter" class="ui-widget-content">
 
@@ -188,6 +248,9 @@ $(function() {
   </ul>
 
   <div id="tabs1" class="tabdiv">
+    <div id="tabs11"></div>
+    <div id="tabs12"></div>
+    <div class="clear"></div>
   </div>
   <div id="tabs2" class="tabdiv">
   </div>

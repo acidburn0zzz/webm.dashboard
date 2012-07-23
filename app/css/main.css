@@ -53,4 +53,9 @@ body {
   width:100%;
   background:#ddd;
 }
+#tabs11 {
+  float: left
+}
+#tabs12 {float: right}
+.clear { clear: both}
 

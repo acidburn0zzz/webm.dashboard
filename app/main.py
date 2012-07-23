@@ -25,8 +25,12 @@ import json
 import pickle
 import StringIO
 
+import urllib
+
 from dbdefine import *
 from drilldown import drilldown
+
+import curve_compare
 
 class ImportFileSetHandler(webapp.RequestHandler):
     def post(self):
@@ -36,8 +40,10 @@ class ImportFileSetHandler(webapp.RequestHandler):
             data = json.loads(line)
 
             # We first load the fileset into the database
+            # For use later, we also add a list of filenames in the fileset
             f = FileSet(key_name=data["name"],
-                        display_name=data["name"])
+                        display_name=data["name"],
+                        files=data["setfiles"])
             f.put()
 
             for filename in data["setfiles"]:
@@ -151,38 +157,45 @@ class ImportCodecMetricHandler(webapp.RequestHandler):
 def pretty_json(x):
     return json.dumps(x, indent=2, sort_keys=True)
 
+
+def CodecMetricFetch(metric, config, filename, commit):
+    '''This function fetches the data for a given metric, config, filename,
+    commit tuple. This functionality is used multiple places, such as
+    CodecMetricHandler and AverageImprovementHandler.'''
+    indexes = CodecMetricIndex.all(keys_only = True)
+    indexes = indexes.filter('metrics =', metric)
+    indexes = indexes.filter('config_name =', config)
+    indexes = indexes.filter('files =', filename)
+    indexes = indexes.filter('commit =', commit)
+    keys = [k.parent() for k in indexes]
+
+    result=[]
+    for cm in db.get(keys):
+        for run in cm.data[filename]:
+            this_run_data = []
+
+            # TODO(jkoleszar): How do we handle this properly?
+            if "Bitrate" in run:
+                this_run_data.append(run["Bitrate"])
+
+            this_run_data.append(run[metric])
+            result.append(this_run_data)
+
+    # Sanity checks
+    for r in result[1:]:
+        assert len(r) == len(result[0])
+
+    # Result is a list of lists. Sort by the first element of the nested
+    # list.
+    result = sorted(result, key=lambda x:x[0])
+    return result
+
+
 class CodecMetricHandler(webapp.RequestHandler):
     def get(self, metric, config, filename, commit):
         """Fetches the requested metric data as JSON"""
 
-        indexes = CodecMetricIndex.all(keys_only = True)
-        indexes = indexes.filter('metrics =', metric)
-        indexes = indexes.filter('config_name =', config)
-        indexes = indexes.filter('files =', filename)
-        indexes = indexes.filter('commit =', commit)
-        keys = [k.parent() for k in indexes]
-
-        result=[]
-        for cm in db.get(keys):
-            for run in cm.data[filename]:
-                this_run_data = []
-
-                # TODO(jkoleszar): How do we handle this properly?
-                if "Bitrate" in run:
-                    this_run_data.append(run["Bitrate"])
-
-                this_run_data.append(run[metric])
-                result.append(this_run_data)
-
-        # Sanity checks
-        for r in result[1:]:
-            assert len(r) == len(result[0])
-
-        # Result is a list of lists. Sort by the first element of the nested
-        # list.
-        #
-        # TODO(jkoleszar): do we always want to sort? or do it on the client?
-        result = sorted(result, key=lambda x:x[0])
+        result = CodecMetricFetch(metric, config, filename, commit)
 
         # Return the result
         if result:
@@ -190,6 +203,70 @@ class CodecMetricHandler(webapp.RequestHandler):
             self.response.out.write(pretty_json(result))
         else:
             self.error(404)
+
+class AverageImprovementHandler(webapp.RequestHandler):
+    def get(self, metrics, configs, filenames, commits):
+        """Calculates the requested composite metrics and outputs as JSON"""
+        def split_field(field):
+            if field:
+                for f in urllib.unquote(field).split(","):
+                    yield f
+            else:
+                yield None
+
+        def field_list(field):
+            '''Returns the field as a list of strings.'''
+            result = urllib.unquote(field).split(",")
+            if len(result[0]) == 0:
+                return None
+            return result
+
+        # We first get a list of the filesets that we need to calculate data
+        # for (and the filenames they contain)
+        all_sets = set([])
+        filename_list = field_list(filenames)
+        if filename_list is not None:
+            files = File.get_by_key_name(filename_list)
+            for f in files:
+                filesets = f.file_sets
+                all_sets.update(filesets)
+
+        filenames = set([])
+        all_sets = list(all_sets)
+        if len(all_sets) > 0:
+            file_sets = FileSet.get_by_key_name(all_sets)
+            for fs in file_sets:
+                if fs.display_name == "All":
+                    continue
+                filenames.update(fs.files)
+
+        result = []
+        # For each file, we compare it with the baseline (for each set up)
+        for m in split_field(metrics):
+            for cfg in split_field(configs):
+                for cm in split_field(commits):
+                    col = [] # Each m, cfg, cm combination will be a column in
+                             # the table
+                    for f in filenames:
+                        data = CodecMetricFetch(m, cfg, f, cm)
+
+                        # We get the baseline data
+                        base_data = [ [ 195.81200000000001, 6.4710957722174287 ],
+                                      [ 241.80500000000001, 6.4482847562548358 ],
+                                      [ 293.089, 5.4961160779715668 ],
+                                      [ 339.92899999999997, 6.4915393603669882 ],
+                                      [ 387.298, 5.1897726879562676 ],
+                                      [ 435.745, 5.9512001586986711 ],
+                                      [ 479.077, 6.1462814996926856 ] ]
+
+                        composite = curve_compare.DataBetter(base_data, data)
+                        col.append([f, composite])
+                    if m and cfg and cm:
+                        result.append({'col': m+ "/" + cfg + "/" + cm[:9],
+                                       'data': col})
+        # return the results
+        #result = list(filenames)
+        self.response.out.write(pretty_json(result))
 
 class MainHandler(webapp.RequestHandler):
     def get(self):
@@ -207,6 +284,7 @@ def main():
         ('/import-filesets', ImportFileSetHandler),
         ('/import-codec-metrics', ImportCodecMetricHandler),
         (r'/metric-data/(.*)/(.*)/(.*)/(.*)', CodecMetricHandler),
+        (r'/average-improvement/(.*)/(.*)/(.*)/(.*)', AverageImprovementHandler),
         ('/graph', ChartHandler)
     ], debug=True)
     util.run_wsgi_app(application)

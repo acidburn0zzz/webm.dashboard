@@ -22,6 +22,7 @@ class File(db.Model):
 class FileSet(db.Model):
     # key_name is the file set name
     display_name = db.StringProperty()
+    files = db.StringListProperty()
 
 class Commit(db.Model):
     author = db.StringProperty()

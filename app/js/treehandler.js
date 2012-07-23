@@ -1,6 +1,12 @@
 // This file contains some simple methods to handle creation and manipulation of
 // jstree objects
 
+// Note: We specify the parent node's id with a preceeding underscore.
+// This naming is taken care of on the server side.
+function removeParents(element, index, array) {
+  return (element[0] !== "_");
+}
+
 // The default configuration for checkboxes.
 function treeConfig(TreeModel) {
   return {
@@ -33,24 +39,18 @@ function treeConfig(TreeModel) {
 // A function that is called whenever any tree is updated
 function TreeHandler() {
 
-  var txt = document.getElementById("tabs1");
-  txt.innerHTML = MetricState.toString() + ConfigState.toString() +
-                  FileState.toString() + CommitState.toString();
+  //var txt = document.getElementById("tabs11");
+  //txt.innerHTML = MetricState.toString() + ConfigState.toString() +
+  //                FileState.toString() + CommitState.toString();
 
   // To remove the parent node information before sending the request
-  // Note: We specify the parent node's id with a preceeding underscore.
-  // This naming is taken care of on the server side.
-  function removeParents(element, index, array) {
-    return (element[0] !== "_");
-  }
-
   // We put together a url for drilldown - separated by commas (no spaces)
   var metrics = MetricState.join(",");
   var configs = ConfigState.join(",");
   var files = FileState.filter(removeParents).join(",");
   var commits = CommitState.filter(removeParents).join(",");
   var drillurl = "/drilldown/" + metrics + "/" + configs + "/" + files + "/" + commits;
-  $("#tabs1").text(drillurl);
+  //$("#tabs11").text(drillurl);
 
   $.ajax({
     type: "GET",
@@ -77,6 +77,7 @@ function TreeHandler() {
     }
   });
 
+  StatisticFiller();
   ChartFiller();
 };
 
@@ -202,6 +203,13 @@ function initTrees(){
     FileState = [];
     $("#treeView4").jstree("uncheck_all");
     CommitState = [];
+
+    // We also clear out the appropriate tabs.
+    $('#tabs11').html('');
+    $('#tabs12').html('');
+    $('#tabs2').html('');
+    $('#tabs3').html('');
+
     TreeHandler();
   });
 
@@ -214,8 +222,10 @@ function initTrees(){
 $(document).ready(function () {
 
   // Note: remove height to turn off vertical animation
-  $( "#tabs" ).tabs({ fx: { height: 'toggle', opacity: 'toggle'} });
+  //$( "#tabs" ).tabs({event: "mouseover", fx: { height: 'toggle', opacity: 'toggle'} });
+  $( "#tabs" ).tabs({event: "mouseover", fx: {} });
   initTrees();
+
 });
 
 
