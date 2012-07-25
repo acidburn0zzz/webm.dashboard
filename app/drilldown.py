@@ -20,67 +20,57 @@ from google.appengine.ext.webapp import util
 from google.appengine.ext import db
 
 import json
+import re
 import urllib
 
 # Here is everything we need to format the output for the UI
 from dbdefine import *
+from cache import CachedDataView, cache_result
 from google.appengine.api import memcache
 
-def treeformatter(query_result):
-    #memcache.flush_all(); # For debugging
+class DrilldownFileCache(CachedDataView):
+    def begin_getitem(self, filename):
+        key = db.Key.from_path('File', filename)
+        return db.get_async(key)
 
-    # We assign ID numbers to parent nodes arbitrarily (jstree will not do it
-    # for us)
-    n = 0
+class DrilldownPatchCache(CachedDataView):
+    def begin_getitem(self, commit):
+        key = db.Key.from_path('Commit', commit)
+        return db.get_async(key)
 
-    # When recieved from drilldown, these are all sets
-    metrics = query_result[0]
-    configs = query_result[1]
-    files = query_result[2]
-    commits = query_result[3]
+    def getitem(self, patch, rpc):
+        patchdata = rpc.get_result()
+        subject = patchdata.message.split("\n")[0]
+        changeid = re.search(r'Change-Id: ([I0-9a-f]+)', patchdata.message)
+        if changeid:
+            subject = "%s: %s"%(changeid.group(1)[:9], subject)
+        patchdata = {"displayname" : "Patch Set: (" + patch[:8] +")",
+                     "commitSet" : subject}
+        return patchdata
 
-    # Handle the file tree
+@cache_result()
+def file_tree_formatter(file_cache):
     filesets = {}
-    for filename in files:
-        filedata = memcache.get(filename)
-        if filedata is None:
-            # Not in memcache yet
-            filedata = File.get_by_key_name(filename)
-            filedata = {"displayname" : filedata.display_name,
-                        "filesets" : filedata.file_sets }
-            memcache.add(key=filename, value=filedata, time=3600)
-
-        for fileset in filedata["filesets"]:
+    for filename, filedata in file_cache:
+        for fileset in filedata.file_sets:
             if fileset in filesets:
                 filesets[fileset].append({"attr": {"id": filename},
-                                          "data":filedata["displayname"]})
+                                          "data":filedata.display_name})
             else:
                 filesets[fileset] = [{"attr": {"id": filename},
-                                      "data":filedata["displayname"]}]
+                                      "data":filedata.display_name}]
     formatted = []
+    n = 0
     for fileset in filesets:
         formatted.append({"data":fileset, "children":filesets[fileset],
-                          "attr": {"id": "_" + str(n)}})
+                          "attr": {"id": "_fs" + str(n)}})
         n += 1
-    files = formatted
+    return formatted
 
-    # Handle the commit tree
-    commits = list(commits)
+@cache_result()
+def commit_tree_formatter(commit_cache):
     commitSets = {}
-    for patch in commits:
-        patchdata = memcache.get(patch)
-        if patchdata is None:
-            # Not in memcache yet
-            patchdata = Commit.get_by_key_name(patch)
-
-            # We give the patch a nice display message for a name
-            # This requires change-ids in the original message
-            breakindex = patchdata.message.find("\n")
-            commitDescription = patchdata.message[-42:-33] + ": " + patchdata.message[:breakindex]
-            patchdata = {"displayname" : "Patch Set: (" + patch[:8] +")",
-                         "commitSet" : commitDescription}
-            memcache.add(key=patch, value=patchdata, time=3600)
-
+    for patch, patchdata in commit_cache:
         commitDescription = patchdata["commitSet"]
         if commitDescription in commitSets:
             commitSets[commitDescription].append({"attr": {"id": patch},
@@ -89,12 +79,28 @@ def treeformatter(query_result):
             commitSets[commitDescription] = [{"attr": {"id" : patch},
                                               "data":patchdata["displayname"]}]
     formatted = []
+    n = 0
     for commitDescription in commitSets:
         formatted.append({"data":commitDescription,
                           "children":commitSets[commitDescription],
-                          "attr": {"id": "_" + str(n)}})
+                          "attr": {"id": "_c" + str(n)}})
         n += 1
-    commits = formatted
+    return formatted
+
+def treeformatter(query_result):
+    #memcache.flush_all(); # For debugging
+
+    # When recieved from drilldown, these are all sets
+    metrics = query_result[0]
+    configs = query_result[1]
+    files = query_result[2]
+    commits = query_result[3]
+
+    # Handle the file tree
+    files = file_tree_formatter(DrilldownFileCache(files))
+
+    # Handle the commit tree
+    commits = commit_tree_formatter(DrilldownPatchCache(commits))
 
     # The other trees. The display name and id are the same
     formatted = []
@@ -326,8 +332,8 @@ class DrilldownQueryHandler(webapp.RequestHandler):
 
 class DrilldownResetHandler(webapp.RequestHandler):
     def get(self):
+        memcache.flush_all()
         drilldown.reset()
-
 
 def main():
     application = webapp.WSGIApplication([
