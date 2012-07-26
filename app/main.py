@@ -19,18 +19,18 @@ from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp import util
 from google.appengine.ext import db
 
+# Standard libraries
 import datetime
 import hashlib
 import json
 import pickle
 import StringIO
-
 import urllib
 
-from dbdefine import *
+# App libraries
 from drilldown import drilldown
-
 import curve_compare
+import model
 
 class ImportFileSetHandler(webapp.RequestHandler):
     def post(self):
@@ -41,9 +41,9 @@ class ImportFileSetHandler(webapp.RequestHandler):
 
             # We first load the fileset into the database
             # For use later, we also add a list of filenames in the fileset
-            f = FileSet(key_name=data["name"],
-                        display_name=data["name"],
-                        files=data["setfiles"])
+            f = model.FileSet(key_name=data["name"],
+                              display_name=data["name"],
+                              files=data["setfiles"])
             f.put()
 
             for filename in data["setfiles"]:
@@ -56,9 +56,9 @@ class ImportFileSetHandler(webapp.RequestHandler):
         for filename in files_added:
             # TODO: Is there a better way of assigning display names?
             split_index = filename.rfind("_")
-            File(key_name=filename,
-                 display_name=filename[:split_index],
-                 file_sets=files_added[filename]).put()
+            model.File(key_name=filename,
+                       display_name=filename[:split_index],
+                       file_sets=files_added[filename]).put()
 
 class ImportCommitHandler(webapp.RequestHandler):
     def convert_time(self, time, zone):
@@ -78,12 +78,12 @@ class ImportCommitHandler(webapp.RequestHandler):
                                       data["author_timezone"])
       commit_time = self.convert_time(data["commit_time"],
                                       data["commit_timezone"])
-      c = Commit(key_name=data["id"],
-                 author=data["author"],
-                 author_time=author_time,
-                 committer=data["committer"],
-                 commit_time=commit_time,
-                 message=data["message"])
+      c = model.Commit(key_name=data["id"],
+                       author=data["author"],
+                       author_time=author_time,
+                       committer=data["committer"],
+                       commit_time=commit_time,
+                       message=data["message"])
       c.put()
 
     def post(self):
@@ -104,12 +104,12 @@ class ImportCodecMetricHandler(webapp.RequestHandler):
             h.update(parent.config_name)
             map(h.update, metric_list)
             map(h.update, file_list)
-            CodecMetricIndex(key_name=h.hexdigest(),
-                             parent=parent,
-                             commit=parent.commit,
-                             config_name=parent.config_name,
-                             metrics=metric_list,
-                             files=file_list).put()
+            model.CodecMetricIndex(key_name=h.hexdigest(),
+                                   parent=parent,
+                                   commit=parent.commit,
+                                   config_name=parent.config_name,
+                                   metrics=metric_list,
+                                   files=file_list).put()
 
     def update_drilldown(self, parent, metrics, files):
         # TODO(jkoleszar): if drilldown is moved to a backend, maybe post this
@@ -130,12 +130,12 @@ class ImportCodecMetricHandler(webapp.RequestHandler):
             data.update(json.loads(line))
 
             # Put the data
-            m = CodecMetric(key_name=key,
-                            commit=data["commit"],
-                            config_flags=data["config_flags"],
-                            runtime_flags=data["runtime_flags"],
-                            config_name=data["config"],
-                            data=data["data"])
+            m = model.CodecMetric(key_name=key,
+                                  commit=data["commit"],
+                                  config_flags=data["config_flags"],
+                                  runtime_flags=data["runtime_flags"],
+                                  config_name=data["config"],
+                                  data=data["data"])
             m.put()
 
             # Build indexes
@@ -158,11 +158,11 @@ def pretty_json(x):
     return json.dumps(x, indent=2, sort_keys=True)
 
 
-def CodecMetricFetch(metric, config, filename, commit):
+def fetch_codec_metric(metric, config, filename, commit):
     '''This function fetches the data for a given metric, config, filename,
     commit tuple. This functionality is used multiple places, such as
     CodecMetricHandler and AverageImprovementHandler.'''
-    indexes = CodecMetricIndex.all(keys_only = True)
+    indexes = model.CodecMetricIndex.all(keys_only = True)
     indexes = indexes.filter('metrics =', metric)
     indexes = indexes.filter('config_name =', config)
     indexes = indexes.filter('files =', filename)
@@ -195,7 +195,7 @@ class CodecMetricHandler(webapp.RequestHandler):
     def get(self, metric, config, filename, commit):
         """Fetches the requested metric data as JSON"""
 
-        result = CodecMetricFetch(metric, config, filename, commit)
+        result = fetch_codec_metric(metric, config, filename, commit)
 
         # Return the result
         if result:
@@ -226,7 +226,7 @@ class AverageImprovementHandler(webapp.RequestHandler):
         all_sets = set([])
         filename_list = field_list(filenames)
         if filename_list is not None:
-            files = File.get_by_key_name(filename_list)
+            files = model.File.get_by_key_name(filename_list)
             for f in files:
                 filesets = f.file_sets
                 all_sets.update(filesets)
@@ -234,7 +234,7 @@ class AverageImprovementHandler(webapp.RequestHandler):
         filenames = set([])
         all_sets = list(all_sets)
         if len(all_sets) > 0:
-            file_sets = FileSet.get_by_key_name(all_sets)
+            file_sets = model.FileSet.get_by_key_name(all_sets)
             for fs in file_sets:
                 if fs.display_name == "All":
                     continue
@@ -248,7 +248,7 @@ class AverageImprovementHandler(webapp.RequestHandler):
                     col = [] # Each m, cfg, cm combination will be a column in
                              # the table
                     for f in filenames:
-                        data = CodecMetricFetch(m, cfg, f, cm)
+                        data = fetch_codec_metric(m, cfg, f, cm)
 
                         # We get the baseline data
                         base_data = [ [ 195.81200000000001, 6.4710957722174287 ],

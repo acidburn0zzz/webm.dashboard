@@ -24,7 +24,6 @@ import re
 import urllib
 
 # Here is everything we need to format the output for the UI
-from dbdefine import *
 from cache import CachedDataView, cache_result
 from google.appengine.api import memcache
 
@@ -87,7 +86,7 @@ def commit_tree_formatter(commit_cache):
         n += 1
     return formatted
 
-def treeformatter(query_result):
+def tree_formatter(query_result):
     #memcache.flush_all(); # For debugging
 
     # When recieved from drilldown, these are all sets
@@ -326,7 +325,7 @@ class DrilldownQueryHandler(webapp.RequestHandler):
         result = drilldown.query(metric, config, filename, commit)
 
         # Here is our formatting
-        result = treeformatter(result)
+        result = tree_formatter(result)
         #self.response.out.write(json.dumps(map(list, result)))
         self.response.out.write(json.dumps(result))
 
