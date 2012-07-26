@@ -29,6 +29,7 @@ import urllib
 
 # App libraries
 from drilldown import drilldown
+from cache import cache_result
 import curve_compare
 import model
 
@@ -158,6 +159,7 @@ def pretty_json(x):
     return json.dumps(x, indent=2, sort_keys=True)
 
 
+@cache_result()
 def fetch_codec_metric(metric, config, filename, commit):
     '''This function fetches the data for a given metric, config, filename,
     commit tuple. This functionality is used multiple places, such as
