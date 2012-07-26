@@ -84,7 +84,8 @@ class ImportCommitHandler(webapp.RequestHandler):
                        author_time=author_time,
                        committer=data["committer"],
                        commit_time=commit_time,
-                       message=data["message"])
+                       message=data["message"],
+                       parents=data["parents"])
       c.put()
 
     def post(self):
@@ -205,6 +206,61 @@ class CodecMetricHandler(webapp.RequestHandler):
             self.response.out.write(pretty_json(result))
         else:
             self.error(404)
+
+def find_baseline(metric, config, filename, commits):
+    def field_list(field):
+        '''Returns the field as a list of strings.'''
+        result = urllib.unquote(field).split(",")
+        if len(result[0]) == 0:
+            return None
+        return result
+
+    def find_first_parent(commit, data, candidates):
+        while True:
+            parents = data[commit].parents
+            if not parents:
+               # root node
+               return None
+            commit = parents[0]
+            if commit in candidates:
+                return commit
+
+    candidates = drilldown.query(metric, config, filename, commits)[3]
+    commit_data = model.CommitCache()
+    commits = field_list(commits)
+    parentage = {}
+    for commit in commits:
+        parentage[commit] = []
+
+    root_nodes_seen = 0
+    while root_nodes_seen < len(commits):
+        for commit1 in commits:
+            parents = parentage[commit1]
+            if parents:
+                this_commit = parents[-1]
+            else:
+                this_commit = commit1
+
+            # already hit the root for this commit?
+            if this_commit is None:
+               continue
+
+            parent = find_first_parent(this_commit, commit_data, candidates)
+            parents.append(parent)
+            if parent is None:
+                root_nodes_seen += 1
+                continue
+
+            n = 0
+            for commit2 in commits:
+                if parent in parentage[commit2]:
+                    n += 1
+
+            if n == len(commits):
+                # parent is found in all lineages
+                return parent
+    return None
+
 
 class AverageImprovementHandler(webapp.RequestHandler):
     def get(self, metrics, configs, filenames, commits):

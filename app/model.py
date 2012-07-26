@@ -11,7 +11,7 @@
 ## This file contains our necessary database definitions
 
 from google.appengine.ext import db
-
+from cache import CachedDataView
 import pickle
 
 class File(db.Model):
@@ -31,7 +31,16 @@ class Commit(db.Model):
     commit_time = db.DateTimeProperty()
     message = db.TextProperty()
     branches = db.StringListProperty()
+    parents = db.StringListProperty()
 
+class CommitCache(CachedDataView):
+    all_commits = [k.name() for k in Commit.all(keys_only = True)]
+    def __init__(self):
+        super(CommitCache, self).__init__(self.all_commits)
+
+    def begin_getitem(self, commit):
+        key = db.Key.from_path('Commit', commit)
+        return db.get_async(key)
 
 class DictProperty(db.Property):
   data_type = dict

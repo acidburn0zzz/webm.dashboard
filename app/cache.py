@@ -79,8 +79,8 @@ class CachedDataView(object):
     def __getitem__(self, key):
         """Get a single item from the cache"""
         data = self._data()
-        if key not in data:
-            value = {key: self.getitem(key)}
+        if data[key] is None:
+            value = {key: self.getitem(key, self.begin_getitem(key))}
             data.update(value)
             self._cache.set_multi(value, key_prefix=self._cache_prefix)
         return data[key]
