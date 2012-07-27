@@ -19,10 +19,20 @@ class File(db.Model):
     display_name = db.StringProperty()
     file_sets = db.StringListProperty()
 
+class FileCache(CachedDataView):
+    def begin_getitem(self, filename):
+        key = db.Key.from_path('File', filename)
+        return db.get_async(key)
+
 class FileSet(db.Model):
     # key_name is the file set name
     display_name = db.StringProperty()
     files = db.StringListProperty()
+
+class FileSetCache(CachedDataView):
+    def begin_getitem(self, fileset):
+        key = db.Key.from_path('FileSet', fileset)
+        return db.get_async(key)
 
 class Commit(db.Model):
     author = db.StringProperty()

@@ -69,6 +69,10 @@ def DataBetter(metric_set1_sorted, metric_set2_sorted):
 
     return avg
 
+  # If one of the curves is not specified
+  if metric_set1_sorted is None or metric_set2_sorted is None:
+    return None
+
   # Be fair to both graphs by testing all the points in each.
   avg_improvement = (GraphBetter(metric_set1_sorted, metric_set2_sorted, 1) -
                      GraphBetter(metric_set2_sorted, metric_set1_sorted, 0)) / 2

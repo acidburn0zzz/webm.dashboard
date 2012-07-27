@@ -26,26 +26,23 @@ import urllib
 # Here is everything we need to format the output for the UI
 from cache import CachedDataView, cache_result
 from google.appengine.api import memcache
+from model import FileCache, CommitCache
 
-class DrilldownFileCache(CachedDataView):
-    def begin_getitem(self, filename):
-        key = db.Key.from_path('File', filename)
-        return db.get_async(key)
-
-class DrilldownPatchCache(CachedDataView):
+class DrilldownCommitCache(CachedDataView):
     def begin_getitem(self, commit):
         key = db.Key.from_path('Commit', commit)
         return db.get_async(key)
 
-    def getitem(self, patch, rpc):
-        patchdata = rpc.get_result()
-        subject = patchdata.message.split("\n")[0]
-        changeid = re.search(r'Change-Id: ([I0-9a-f]+)', patchdata.message)
+    def getitem(self, commit, rpc):
+        commitdata = rpc.get_result()
+        subject = commitdata.message.split("\n")[0]
+        changeid = re.search(r'Change-Id: ([I0-9a-f]+)', commitdata.message)
         if changeid:
             subject = "%s: %s"%(changeid.group(1)[:9], subject)
-        patchdata = {"displayname" : "Patch Set: (" + patch[:8] +")",
-                     "commitSet" : subject}
-        return patchdata
+        commitdata = {"displayname" : "Patch Set: (" + commit[:8] +")",
+                     "commitSet" : subject,
+                     "parents" : commitdata.parents}
+        return commitdata
 
 @cache_result()
 def file_tree_formatter(file_cache):
@@ -96,10 +93,10 @@ def tree_formatter(query_result):
     commits = query_result[3]
 
     # Handle the file tree
-    files = file_tree_formatter(DrilldownFileCache(files))
+    files = file_tree_formatter(FileCache(files))
 
     # Handle the commit tree
-    commits = commit_tree_formatter(DrilldownPatchCache(commits))
+    commits = commit_tree_formatter(DrilldownCommitCache(commits))
 
     # The other trees. The display name and id are the same
     formatted = []

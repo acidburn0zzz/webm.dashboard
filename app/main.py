@@ -29,7 +29,7 @@ import urllib
 
 # App libraries
 from drilldown import drilldown
-from cache import cache_result
+from cache import cache_result, CachedDataView
 import curve_compare
 import model
 
@@ -172,6 +172,9 @@ def fetch_codec_metric(metric, config, filename, commit):
     indexes = indexes.filter('commit =', commit)
     keys = [k.parent() for k in indexes]
 
+    if len(keys) == 0:
+        return None
+
     result=[]
     for cm in db.get(keys):
         for run in cm.data[filename]:
@@ -207,6 +210,7 @@ class CodecMetricHandler(webapp.RequestHandler):
         else:
             self.error(404)
 
+@cache_result()
 def find_baseline(metric, config, filename, commits):
     def field_list(field):
         '''Returns the field as a list of strings.'''
@@ -262,6 +266,16 @@ def find_baseline(metric, config, filename, commits):
     return None
 
 
+@cache_result()
+def calculate_average_improvement(m, cfg, f, cm, parent):
+    '''Calculates the average improvement given the set up and the parent
+    commit, caching the result'''
+    base_data = fetch_codec_metric(m, cfg, f, parent)
+    data = fetch_codec_metric(m, cfg, f, cm)
+    composite = curve_compare.DataBetter(base_data, data)
+    return composite
+
+
 class AverageImprovementHandler(webapp.RequestHandler):
     def get(self, metrics, configs, filenames, commits):
         """Calculates the requested composite metrics and outputs as JSON"""
@@ -276,54 +290,66 @@ class AverageImprovementHandler(webapp.RequestHandler):
             '''Returns the field as a list of strings.'''
             result = urllib.unquote(field).split(",")
             if len(result[0]) == 0:
-                return None
+                return []
             return result
 
         # We first get a list of the filesets that we need to calculate data
         # for (and the filenames they contain)
         all_sets = set([])
         filename_list = field_list(filenames)
-        if filename_list is not None:
-            files = model.File.get_by_key_name(filename_list)
-            for f in files:
-                filesets = f.file_sets
-                all_sets.update(filesets)
+        files = model.FileCache(filename_list)
+        for f, fdata in files:
+            filesets = fdata.file_sets
+            all_sets.update(filesets)
 
         filenames = set([])
         all_sets = list(all_sets)
-        if len(all_sets) > 0:
-            file_sets = model.FileSet.get_by_key_name(all_sets)
-            for fs in file_sets:
-                if fs.display_name == "All":
-                    continue
-                filenames.update(fs.files)
+        file_sets = model.FileSetCache(list(all_sets))
+        for fs, fsdata in file_sets:
+            if fsdata.display_name == "All":
+                continue
+            filenames.update(fsdata.files)
 
         result = []
-        # For each file, we compare it with the baseline (for each set up)
+        commit_cache = model.CommitCache()
+
         for m in split_field(metrics):
             for cfg in split_field(configs):
-                for cm in split_field(commits):
+                commit_list = field_list(commits)
+                for cm in commit_list:
+                    cmdata = commit_cache[cm]
                     col = [] # Each m, cfg, cm combination will be a column in
                              # the table
+                    sum_overall = 0
+                    count_overall = 0
+                    parent = None
+                    # We get the key of the parent commit (our baseline)
                     for f in filenames:
-                        data = fetch_codec_metric(m, cfg, f, cm)
+                        if parent is None:
+                            parent = find_baseline(m, cfg, f, commits)
+                        composite = calculate_average_improvement(m, cfg, f, cm, parent)
 
-                        # We get the baseline data
-                        base_data = [ [ 195.81200000000001, 6.4710957722174287 ],
-                                      [ 241.80500000000001, 6.4482847562548358 ],
-                                      [ 293.089, 5.4961160779715668 ],
-                                      [ 339.92899999999997, 6.4915393603669882 ],
-                                      [ 387.298, 5.1897726879562676 ],
-                                      [ 435.745, 5.9512001586986711 ],
-                                      [ 479.077, 6.1462814996926856 ] ]
-
-                        composite = curve_compare.DataBetter(base_data, data)
+                        if composite is not None:
+                            sum_overall += composite
+                            count_overall += 1
+                            composite *= 100 # Make it a percent
                         col.append([f, composite])
-                    if m and cfg and cm:
-                        result.append({'col': m+ "/" + cfg + "/" + cm[:9],
-                                       'data': col})
+
+                    # We format the end of the table with extra info
+                    if parent:
+                        parent = parent[:9]
+                    else:
+                        parent = "None found"
+
+                    if count_overall != 0:
+                        col.append(['OVERALL: (' + parent + ')',
+                                        sum_overall / count_overall * 100])
+                    else:
+                        col.append(['OVERALL: (' + parent + ')',
+                                    None])
+                    result.append({'col': m+ "/" + cfg + "/" + cm[:9],
+                                   'data': col})
         # return the results
-        #result = list(filenames)
         self.response.out.write(pretty_json(result))
 
 class MainHandler(webapp.RequestHandler):
