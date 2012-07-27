@@ -283,8 +283,6 @@ class AverageImprovementHandler(webapp.RequestHandler):
             if field:
                 for f in urllib.unquote(field).split(","):
                     yield f
-            else:
-                yield None
 
         def field_list(field):
             '''Returns the field as a list of strings.'''
