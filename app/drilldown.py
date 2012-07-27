@@ -22,6 +22,7 @@ from google.appengine.ext import db
 import json
 import re
 import urllib
+import time
 
 # Here is everything we need to format the output for the UI
 from cache import CachedDataView, cache_result
@@ -35,13 +36,16 @@ class DrilldownCommitCache(CachedDataView):
 
     def getitem(self, commit, rpc):
         commitdata = rpc.get_result()
+
         subject = commitdata.message.split("\n")[0]
         changeid = re.search(r'Change-Id: ([I0-9a-f]+)', commitdata.message)
         if changeid:
             subject = "%s: %s"%(changeid.group(1)[:9], subject)
         commitdata = {"displayname" : "Patch Set: (" + commit[:8] +")",
                      "commitSet" : subject,
-                     "parents" : commitdata.parents}
+                     "parents" : commitdata.parents,
+                     "date" : commitdata.commit_time,
+                     "author" : commitdata.author }
         return commitdata
 
 @cache_result()
@@ -68,18 +72,37 @@ def commit_tree_formatter(commit_cache):
     commitSets = {}
     for patch, patchdata in commit_cache:
         commitDescription = patchdata["commitSet"]
+
+        prettydate = "%s" %(patchdata["date"])
+
+        # We convert the time also to ms for comparison (in sorting)
+        ms = time.mktime(patchdata["date"].utctimetuple())
+        ms += getattr(patchdata["date"], 'microseconds', 0) / 1000
+        date = int(ms)
+
         if commitDescription in commitSets:
-            commitSets[commitDescription].append({"attr": {"id": patch},
+            commitSets[commitDescription].append({"attr": {"id": patch,
+                                                           "date" : date,
+                                                           "prettydate" : prettydate,
+                                                           "author" : patchdata["author"]},
                                                   "data":patchdata["displayname"]})
         else:
-            commitSets[commitDescription] = [{"attr": {"id" : patch},
+            commitSets[commitDescription] = [{"attr": {"id": patch,
+                                                        "date" : date,
+                                                        "prettydate" : prettydate,
+                                                        "author" : patchdata["author"]},
                                               "data":patchdata["displayname"]}]
     formatted = []
     n = 0
     for commitDescription in commitSets:
+        date = commitSets[commitDescription][0]["attr"]["date"]
+        prettydate = commitSets[commitDescription][0]["attr"]["prettydate"]
         formatted.append({"data":commitDescription,
                           "children":commitSets[commitDescription],
-                          "attr": {"id": "_c" + str(n)}})
+                          "attr": {"id": "_c" + str(n),
+                                   "date" : date,
+                                   "author" : "See patch",
+                                   "prettydate" : prettydate }})
         n += 1
     return formatted
 

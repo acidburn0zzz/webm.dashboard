@@ -49,6 +49,8 @@ function ChartFiller() {
     }
     else {
       $('#tabs11').html("Please select a valid run.");
+      $('#tabs12').html("");
+      $('#tabs2').html("");
     }
   });
 
@@ -99,7 +101,6 @@ function StatisticFiller() {
     success: function(response){
       response = eval(response);
       if (response.length > 0) {
-        //$('#tabs3').html(response);
         ImprovementTable(response);
       }
     },
@@ -171,7 +172,7 @@ function drawChart(data_in) {
   //$("#tabs3").text(view.toJSON());
 
   // Set chart options
-  var chartOptions = {title:'Test Graph',
+  var chartOptions = {title:'Performance Graph',
                  width:800,
                  height:600,
                  chartArea: {left: 50, width: "55%"},
@@ -184,7 +185,6 @@ function drawChart(data_in) {
   var tableOptions = {width: 'automatic'};
 
   // Instantiate and draw our chart, passing in some options.
-  div = document.getElementById("poop");
   var chart = new google.visualization.LineChart(document.getElementById("tabs12"));
   var table = new google.visualization.Table(document.getElementById("tabs2"));
   chart.draw(view, chartOptions);
@@ -207,12 +207,17 @@ $(function() {
 
 <!-- ----------------------------------------------------------------------- -->
 </head>
-
 <body>
 
 <div id ="main"> <!-- This div exists to test some Jquery binding things -->
 <h1>WebM Development Dashboard</h1>
 
+<!-- A button to clear out all trees -->
+<div id="resetbutton">
+<input type="button" value="Reset" onclick="RequestTest()" />
+</div>
+
+<!-- Where the jstrees go -->
 <div id="topcenter" class="ui-widget-content">
 
 <div id="topcolumnsm">
@@ -259,25 +264,9 @@ $(function() {
   </div>
 
 </div> <!-- end of tabs -->
-
-<div id="clearer">
-  <h3> Click here to clear all boxes. </h3>
-</div>
-
-
-<!-- 
-<div id="button">
-<input type="button" value="Test Ajax Calling Functionality" onclick="RequestTest()" />
-</div>
-<br>
-<div id="result">
-Hello
-</div>
--->
+</div> <!-- end of bottom center -->
 
 
 </div> <!-- end of main -->
-
-
 </body>
 </html>

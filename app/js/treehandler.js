@@ -35,6 +35,42 @@ function treeConfig(TreeModel) {
   }
 };
 
+// We sort the commits in reverse chronological order
+function commitTreeConfig(TreeModel) {
+  return $.extend(treeConfig(TreeModel), {
+    "plugins" : ["themes", "json_data", "ui", "checkbox", "sort", "contextmenu"],
+    "sort": function (a, b) {
+      return $(a).attr("date") < $(b).attr("date") ? 1 : -1;
+    },
+    "contextmenu" : {
+      items: function ($node) {
+        return {
+          infoItem : {
+            "label" : "Info",
+            "submenu" :{
+              dateItem : {
+                "label" : ($node).attr("prettydate"),
+              },
+              authorItem : {
+                "label" : "Author: " + ($node).attr("author"),
+              },
+            }
+          },
+          gotoItem : {
+            "label" : "Go to gerrit",
+            "action" : function(obj) {
+              // We open the gerrit link in a new tab
+            },
+            "_disabled" : true,
+          },
+        }
+      }
+    }
+
+  })
+};
+
+
 // -----------------------------------------------------------------------------
 // A function that is called whenever any tree is updated
 function TreeHandler() {
@@ -85,7 +121,15 @@ function TreeHandler() {
 function initTree(divName, ContentsList, StateList){
   // Triggered when a name is clicked, rather than a checkbox
   // simply calls code below
-  $(divName).jstree(treeConfig(ContentsList));
+
+  if (divName === "#treeView4") {
+    // We handle sorting a bit differently on the commit tree
+    $(divName).jstree(commitTreeConfig(ContentsList));
+  }
+  else {
+    $(divName).jstree(treeConfig(ContentsList));
+  }
+
   $(divName).bind("select_node.jstree", function (event, data) {
     // `data.rslt.obj` is the jquery extended node that was clicked
     data.inst.change_state(data.rslt.obj);
@@ -194,7 +238,7 @@ function initTrees(){
 
   // Clears out all trees when a button is clicked
   // TODO (rlawler): Figure out a way to avoid duplicating these calls
-  $("#clearer").click(function(){
+  $("#resetbutton").click(function(){
     $("#treeView1").jstree("uncheck_all");
     MetricState = [];
     $("#treeView2").jstree("uncheck_all");
@@ -205,7 +249,7 @@ function initTrees(){
     CommitState = [];
 
     // We also clear out the appropriate tabs.
-    $('#tabs11').html('');
+    $('#tabs11').html('Please select a valid run.');
     $('#tabs12').html('');
     $('#tabs2').html('');
     $('#tabs3').html('');
