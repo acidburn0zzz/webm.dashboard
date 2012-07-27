@@ -60,8 +60,17 @@ function commitTreeConfig(TreeModel) {
             "label" : "Go to gerrit",
             "action" : function(obj) {
               // We open the gerrit link in a new tab
+              patchid = ($node).attr("id")
+              if (patchid[0] === '_') { // This is a parent node
+                children = ($node).children("ul").children("li");
+                patchid = (children).attr("id");
+              }
+              var url = "https://gerrit.chromium.org/gerrit/#q," + patchid + ",n,z";
+              window.open(url, '_blank');
+              window.focus();
             },
-            "_disabled" : true,
+            //"_disabled" : ($node).attr("id")[0] === "_" ? true : false,
+            "_disabled" : false,
           },
         }
       }
