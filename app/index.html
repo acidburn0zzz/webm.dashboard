@@ -13,6 +13,15 @@
 <script type="text/javascript" src="/js/json2.js"></script>
 <script type="text/javascript">
 
+function is_distortion(metric)
+{
+  if (['CxF', 'DxF'].indexOf(metric) != -1) {
+    return false;
+  }
+  else
+    return true;
+};
+
 function range(start, end)
 {
   var foo = [];
@@ -25,6 +34,7 @@ var MetricState = new Array();
 var ConfigState = new Array();
 var FileState = new Array();
 var CommitState = new Array();
+var FileTableState = new Array();
 
 </script>
 <script type="text/javascript" src="/js/treehandler.js"></script>
@@ -35,7 +45,8 @@ var CommitState = new Array();
 google.load('visualization', '1.0', {'packages':['corechart', 'table']});
 
 function ChartFiller() {
-  var responses = new Array();
+  var dist_responses = new Array();
+  var bar_responses = new Array();
 
   var queryNum = MetricState.length * ConfigState.length *
                  FileState.length * CommitState.length;
@@ -44,17 +55,26 @@ function ChartFiller() {
   // Wait until all data is fetched to generate graphs
   $(document).ajaxStop(function() {
     $(this).unbind("ajaxStop");
-    if (responses.length > 0) {
-      drawChart(responses);
+    if (dist_responses.length > 0) {
+      drawChart(dist_responses);
     }
     else {
-      $('#tabs11').html("Please select a valid run.");
-      $('#tabs12').html("");
+      $('#chartdiv').html("");
       $('#tabs2').html("");
     }
+
+    if (bar_responses.length > 0) {
+      drawChart2(bar_responses);
+    }
+    else {
+      $('#chartdiv2').html("");
+      $('#tabs3').html("");
+    }
+
   });
 
-  var files = FileState.filter(removeParents);
+  //var files = FileState.filter(removeParents);
+  var files = FileTableState;
   var commits = CommitState.filter(removeParents);
   // Ew, quadruple nested loop
   for (var i = 0; i < MetricState.length; i++) {
@@ -72,7 +92,15 @@ function ChartFiller() {
             type: "GET",
             url: metricurl,
             success: function(response){
-              responses.push([response, this.url]);
+
+              // Not ideal to use the url, but necessary
+              if (is_distortion(this.url.slice(13, 16)))
+                dist_responses.push([response, this.url]);
+              else
+                bar_responses.push([response, this.url]);
+            },
+            error: function(xhr, ajaxOptions, thrownError) {
+                //$("#chartdiv").html("WHAA");
             },
           });
         }
@@ -80,6 +108,8 @@ function ChartFiller() {
     }
   }
 }
+
+
 
 function StatisticFiller() {
   // This function is reponsible for filling a table with the composite metrics
@@ -103,11 +133,15 @@ function StatisticFiller() {
       if (response.length > 0) {
         ImprovementTable(response);
       }
+      else {
+        $('#tabs11').html("Please select a valid run.");
+      }
     },
   });
 
 }
 
+// ------------------------------------------------------------------------
 function ImprovementTable(data_in) {
   numCol = data_in.length;
   var data1 = new google.visualization.DataTable();
@@ -138,9 +172,44 @@ function ImprovementTable(data_in) {
 
   var table = new google.visualization.Table(document.getElementById("tabs11"));
   table.draw(view, tableOptions);
+
+  // We add some bindings to allow for selecting rows of the table
+  // Add our selection handler
+  google.visualization.events.addListener(table, 'select', selectHandler);
+
+  // The selection handler
+  // Loop through all items in the selection and add them to FileTableState
+  function selectHandler() {
+
+    FileTableState.length = 0; // Clear out the global array
+
+    var selection = table.getSelection();
+    for (var i = 0; i < selection.length; i++) {
+      var item = selection[i];
+
+      // We get the name of the file selected
+      if (item.row != null && item.column != null) {
+        var str = view.getFormattedValue(item.row, item.column);
+      } else if (item.row != null) {
+        var str = view.getFormattedValue(item.row, 0);
+      } else if (item.column != null) {
+        var str = view.getFormattedValue(0, item.column);
+      }
+
+      FileTableState.push(str);
+    }
+
+    ChartFiller();
+    if (selection.length == 0) {
+      // We get rid of tables that are no longer relevant
+      $('#chartdiv').html("");
+      $('#tabs2').html("");
+    }
+  }
+
 }
 
-
+// -----------------------------------------------------------------------------
 function drawChart(data_in) {
   var numCurves = data_in.length;
   var view;
@@ -172,7 +241,7 @@ function drawChart(data_in) {
   //$("#tabs3").text(view.toJSON());
 
   // Set chart options
-  var chartOptions = {title:'Performance Graph',
+  var chartOptions = {title:'Rate Distortion',
                  width:800,
                  height:600,
                  chartArea: {left: 50, width: "55%"},
@@ -185,10 +254,60 @@ function drawChart(data_in) {
   var tableOptions = {width: 'automatic'};
 
   // Instantiate and draw our chart, passing in some options.
-  var chart = new google.visualization.LineChart(document.getElementById("tabs12"));
+  var chart = new google.visualization.LineChart(document.getElementById("chartdiv"));
   var table = new google.visualization.Table(document.getElementById("tabs2"));
   chart.draw(view, chartOptions);
   table.draw(view, tableOptions);
+}
+
+// -----------------------------------------------------------------------------
+function drawChart2(data_in) {
+  var numCurves = data_in.length;
+  var view;
+  var data2;
+
+  // We have at least one curve
+  data_in1 = data_in[0][0];
+
+  var data1 = new google.visualization.DataTable();
+  data1.addColumn('number', 'X');
+  data1.addColumn('number', data_in[0][1].slice(13, -32));
+  data1.addRows(data_in1);
+  view = new google.visualization.DataView(data1);
+
+  for (var i = 1; i < numCurves; i++){
+    data_in2 = data_in[i][0];
+    data2 = new google.visualization.DataTable();
+    data2.addColumn('number', 'X');
+
+    data2.addColumn('number',  data_in[i][1].slice(13, -32));
+    data2.addRows(data_in2);
+
+    // A list of numbers from 1 to i
+    leftColumns = range(1, i);
+
+    // Join the two tables into one view
+    view = new google.visualization.data.join(view, data2, 'full', [[0,0]], leftColumns, [1]);
+  }
+
+  // Set chart options
+  var chartOptions = {title:'Performance',
+                 width:800,
+                 height:600,
+                 chartArea: {left: 50, width: "55%"},
+                 hAxis: {title: 'x axis'},
+                 vAxis: {title: 'y axis'},
+                 'pointSize':2,
+                 'lineWidth':1,
+                 'interpolateNulls':true,
+                };
+  var tableOptions = {width: 'automatic'};
+
+  // Instantiate and draw our chart, passing in some options.
+  var chart2 = new google.visualization.LineChart(document.getElementById("chartdiv2"));
+  var table2 = new google.visualization.Table(document.getElementById("tabs3"));
+  chart2.draw(view, chartOptions);
+  table2.draw(view, tableOptions);
 }
 
 </script>
@@ -214,7 +333,7 @@ $(function() {
 
 <!-- A button to clear out all trees -->
 <div id="resetbutton">
-<input type="button" value="Reset" onclick="RequestTest()" />
+<input type="button" value="Reset" />
 </div>
 
 <!-- Where the jstrees go -->
@@ -254,7 +373,11 @@ $(function() {
 
   <div id="tabs1" class="tabdiv">
     <div id="tabs11"></div>
-    <div id="tabs12"></div>
+    <div id="tabs12">
+      <div id="chartdiv"></div>
+    </div>
+    <div class="clear"></div>
+    <div id="chartdiv2"></div>
     <div class="clear"></div>
   </div>
   <div id="tabs2" class="tabdiv">

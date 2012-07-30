@@ -51,11 +51,15 @@ body {
 #bottomcenter {
   float:left;
   width:100%;
-  background:#ddd;
 }
 #tabs11 {
   float: left
 }
-#tabs12 {float: right}
+#tabs12 {
+  float: right
+}
+#chartdiv2 {
+  float: right
+}
 .clear { clear: both}
 

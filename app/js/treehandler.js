@@ -123,7 +123,7 @@ function TreeHandler() {
   });
 
   StatisticFiller();
-  ChartFiller();
+  //ChartFiller();
 };
 
 // ---------------------------------------------------------------------------

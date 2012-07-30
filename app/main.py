@@ -26,6 +26,7 @@ import json
 import pickle
 import StringIO
 import urllib
+import logging
 
 # App libraries
 from drilldown import drilldown
@@ -290,6 +291,11 @@ def calculate_average_improvement(m, cfg, f, cm, parent):
     composite = curve_compare.DataBetter(base_data, data)
     return composite
 
+@cache_result()
+def get_files_from_fileset(fileset, fs_cache):
+    '''Returns a list of files in a given fileset.'''
+    fsdata = fs_cache[fileset]
+    return fsdata.files[:]
 
 class AverageImprovementHandler(webapp.RequestHandler):
     def get(self, metrics, configs, filenames, commits):
@@ -306,22 +312,18 @@ class AverageImprovementHandler(webapp.RequestHandler):
                 return []
             return result
 
-        # We first get a list of the filesets that we need to calculate data
-        # for (and the filenames they contain)
-        all_sets = set([])
-        filename_list = field_list(filenames)
-        files = model.FileCache(filename_list)
-        for f, fdata in files:
-            filesets = fdata.file_sets
-            all_sets.update(filesets)
+        # We expect to get filesets instead
+        fs_modded = []
+        for f in urllib.unquote(filenames).split(","):
+            if f is not None and f != "" and f[0] == "~":
+                fs_modded.append(f[1:])
+        fileset_cache = model.FileSetCache(fs_modded)
 
-        filenames = set([])
-        all_sets = list(all_sets)
-        file_sets = model.FileSetCache(list(all_sets))
-        for fs, fsdata in file_sets:
-            if fsdata.display_name == "All":
-                continue
-            filenames.update(fsdata.files)
+        fsets = set([])
+        for fs in urllib.unquote(filenames).split(","):
+            if fs != '':
+                fsets.update(get_files_from_fileset(fs[1:], fileset_cache))
+        filenames = fsets
 
         result = []
         commit_cache = model.CommitCache()

@@ -27,7 +27,7 @@ import time
 # Here is everything we need to format the output for the UI
 from cache import CachedDataView, cache_result
 from google.appengine.api import memcache
-from model import FileCache, CommitCache, MetricCache
+from model import FileCache, CommitCache, MetricCache, FileSetCache
 
 class DrilldownCommitCache(CachedDataView):
     def begin_getitem(self, commit):
@@ -71,11 +71,11 @@ def file_tree_formatter(file_cache):
                 filesets[fileset] = [{"attr": {"id": filename},
                                       "data":filedata.display_name}]
     formatted = []
-    n = 0
     for fileset in filesets:
-        formatted.append({"data":fileset, "children":filesets[fileset],
-                          "attr": {"id": "_fs" + str(n)}})
-        n += 1
+        #formatted.append({"data":fileset, "children":filesets[fileset],
+        #                  "attr": {"id": "@" + fileset}})
+        formatted.append({"data":fileset,
+                          "attr": {"id": "~" + fileset}})
     return formatted
 
 @cache_result()
@@ -333,17 +333,38 @@ class DrilldownMatrix(object):
             else:
                 yield None
 
+        fs_modded = []
+        for f in urllib.unquote(filename).split(","):
+            if f is not None and f != "" and f[0] == "~":
+                fs_modded.append(f[1:])
+        fs_cache = FileSetCache(fs_modded)
+
         result = None
         for m in split_field(metric):
             for cfg in split_field(config):
                 for f in split_field(filename):
-                    for cm in split_field(commit):
-                        if not result:
-                            result = self.query_(m,cfg,f,cm)
-                        else:
-                            r = self.query_(m,cfg,f,cm)
-                            for idx in range(4):
-                                result[idx] = result[idx].intersection(r[idx])
+                    if f is not None and f[0] == '~' :
+                        # We have a fileset instead of a file
+                        # We replace any filesets with filenames
+                        fsdata = fs_cache[f[1:]]
+
+                        for fname in fsdata.files:
+                            for cm in split_field(commit):
+                                if not result:
+                                    result = self.query_(m,cfg,fname,cm)
+                                else:
+                                    r = self.query_(m,cfg,fname,cm)
+                                    for idx in range(4):
+                                        result[idx] = result[idx].intersection(r[idx])
+
+                    else: # Do we ever have a file, not fileset?
+                        for cm in split_field(commit):
+                            if not result:
+                                result = self.query_(m,cfg,f,cm)
+                            else:
+                                r = self.query_(m,cfg,f,cm)
+                                for idx in range(4):
+                                    result[idx] = result[idx].intersection(r[idx])
         return result
 
 drilldown = DrilldownMatrix()
