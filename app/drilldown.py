@@ -27,7 +27,7 @@ import time
 # Here is everything we need to format the output for the UI
 from cache import CachedDataView, cache_result
 from google.appengine.api import memcache
-from model import FileCache, CommitCache
+from model import FileCache, CommitCache, MetricCache
 
 class DrilldownCommitCache(CachedDataView):
     def begin_getitem(self, commit):
@@ -47,6 +47,17 @@ class DrilldownCommitCache(CachedDataView):
                      "date" : commitdata.commit_time,
                      "author" : commitdata.author }
         return commitdata
+
+@cache_result()
+def metric_tree_formatter(metric_cache):
+    # We only display a metric if it has a display name
+    # A display name of "" means we have something like bitrate or time
+    formatted = []
+    for metricname, metricdata in metric_cache:
+        if metricdata.display_name != "":
+            formatted.append({"data":metricdata.display_name,
+                              "attr":{"id": metricname}})
+    return formatted
 
 @cache_result()
 def file_tree_formatter(file_cache):
@@ -115,17 +126,14 @@ def tree_formatter(query_result):
     files = query_result[2]
     commits = query_result[3]
 
+    # The metric tree
+    metrics = metric_tree_formatter(MetricCache(metrics))
+
     # Handle the file tree
     files = file_tree_formatter(FileCache(files))
 
     # Handle the commit tree
     commits = commit_tree_formatter(DrilldownCommitCache(commits))
-
-    # The other trees. The display name and id are the same
-    formatted = []
-    for metric in metrics:
-        formatted.append({"data":metric, "attr":{"id": metric}})
-    metrics = formatted
 
     formatted = []
     for config in configs:

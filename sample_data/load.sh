@@ -10,6 +10,9 @@ for f in ${dir}/*.json; do
       *filesets.json)
          curl -F data=@${f} http://localhost:8080/import-filesets
          ;;
+      *metrics.json)
+         curl -F data=@${f} http://localhost:8080/import-metrics
+         ;;
       *)
          curl -F data=@${f} http://localhost:8080/import-codec-metrics
          ;;

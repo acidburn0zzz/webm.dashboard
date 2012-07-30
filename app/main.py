@@ -33,6 +33,21 @@ from cache import cache_result, CachedDataView
 import curve_compare
 import model
 
+# We give metrics their own handler for convenience
+class ImportMetricHandler(webapp.RequestHandler):
+    def post(self):
+        data = StringIO.StringIO(self.request.get("data"))
+        for line in data:
+            data = json.loads(line)
+
+            # We first load the fileset into the database
+            # For use later, we also add a list of filenames in the fileset
+            m = model.Metric(key_name=data["name"],
+                             display_name=data["display name"],
+                             distortion=data["distortion"])
+            m.put()
+
+
 class ImportFileSetHandler(webapp.RequestHandler):
     def post(self):
         files_added = {}
@@ -362,6 +377,7 @@ class ChartHandler(webapp.RequestHandler):
 def main():
     application = webapp.WSGIApplication([
         ('/', MainHandler),
+        ('/import-metrics', ImportMetricHandler),
         ('/import-commits', ImportCommitHandler),
         ('/import-filesets', ImportFileSetHandler),
         ('/import-codec-metrics', ImportCodecMetricHandler),

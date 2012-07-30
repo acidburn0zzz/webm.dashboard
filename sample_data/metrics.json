@@ -1,0 +1,10 @@
+{"name" : "AVGPsnr", "display name" : "AVGPsnr", "distortion" : true}
+{"name" : "AVPsnrP", "display name" : "AVPsnrP", "distortion" : true}
+{"name" : "Bitrate", "display name" : "", "distortion" : false}
+{"name" : "CxFPS", "display name" : "CxFPS", "distortion" : false}
+{"name" : "DxFPS", "display name" : "DxFPS", "distortion" : false}
+{"name" : "GLBPsnr", "display name" : "GLBPsnr", "distortion" : true}
+{"name" : "GLPsnrP", "display name" : "GLPsnrP", "distortion" : true}
+{"name" : "Time(us)", "display name" : "", "distortion" : false}
+{"name" : "VPXSSIM", "display name" : "VPXSSIM", "distortion" : true}
+{"name" : "target_bitrate", "display name" : "", "distortion" : false}

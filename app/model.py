@@ -14,6 +14,16 @@ from google.appengine.ext import db
 from cache import CachedDataView
 import pickle
 
+class Metric(db.Model):
+    # key_name is the metric name (a less pretty version of display name)
+    display_name = db.StringProperty()
+    distortion = db.BooleanProperty()
+
+class MetricCache(CachedDataView):
+    def begin_getitem(self, metricname):
+        key = db.Key.from_path('Metric', metricname)
+        return db.get_async(key)
+
 class File(db.Model):
     # key_name is the filename
     display_name = db.StringProperty()
