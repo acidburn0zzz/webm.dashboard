@@ -204,6 +204,8 @@ function ImprovementTable(data_in) {
       // We get rid of tables that are no longer relevant
       $('#chartdiv').html("");
       $('#tabs2').html("");
+      $('#chartdiv2').html("");
+      $('#tabs3').html("");
     }
   }
 
@@ -262,49 +264,65 @@ function drawChart(data_in) {
 
 // -----------------------------------------------------------------------------
 function drawChart2(data_in) {
+  // We make a candlestick chart
+
   var numCurves = data_in.length;
   var view;
   var data2;
 
+  function find_min_avg_max(arr) {
+    var min_ele = arr[0];
+    var max_ele = arr[0];
+    var sum = 0;
+    var count = 0;
+    for (var k = 0; k < arr.length; k++) {
+      count += 1;
+      sum += arr[k];
+      if (arr[k] < min_ele)
+        min_ele = arr[k];
+      else if (arr[k] > max_ele)
+        max_ele = arr[k];
+    }
+    // we assume arr.length >= 1
+    return [min_ele, sum/count, sum/count, max_ele];
+  }
+
   // We have at least one curve
   data_in1 = data_in[0][0];
 
-  var data1 = new google.visualization.DataTable();
-  data1.addColumn('number', 'X');
-  data1.addColumn('number', data_in[0][1].slice(13, -32));
-  data1.addRows(data_in1);
-  view = new google.visualization.DataView(data1);
-
-  for (var i = 1; i < numCurves; i++){
-    data_in2 = data_in[i][0];
-    data2 = new google.visualization.DataTable();
-    data2.addColumn('number', 'X');
-
-    data2.addColumn('number',  data_in[i][1].slice(13, -32));
-    data2.addRows(data_in2);
-
-    // A list of numbers from 1 to i
-    leftColumns = range(1, i);
-
-    // Join the two tables into one view
-    view = new google.visualization.data.join(view, data2, 'full', [[0,0]], leftColumns, [1]);
+  // We convert it to the proper format [title, d1, d2, d3, d4]
+  var arr = new Array(data_in[0][1].slice(13, -32));
+  var comparr = [];
+  for (var j = 0; j < data_in1.length; j++) {
+    comparr[j] = data_in1[j][1];
   }
+  arr = arr.concat(find_min_avg_max(comparr));
+  var mat = [arr];
+
+  // We now add in other curves, if applicable
+  for (var i = 1; i < numCurves; i++){
+    arr = new Array(data_in[0][1].slice(13, -32));
+    comparr = [];
+    data_in1 = data_in[i][0];
+    for (var j = 0; j < data_in1.length; j++) {
+      comparr[j] = data_in1[j][1];
+    }
+    arr = arr.concat(find_min_avg_max(comparr));
+    mat[i] = arr;
+  }
+
+  var data1 = new google.visualization.arrayToDataTable(mat, true);
+  view = new google.visualization.DataView(data1);
 
   // Set chart options
   var chartOptions = {title:'Performance',
                  width:800,
                  height:600,
-                 chartArea: {left: 50, width: "55%"},
-                 hAxis: {title: 'x axis'},
-                 vAxis: {title: 'y axis'},
-                 'pointSize':2,
-                 'lineWidth':1,
-                 'interpolateNulls':true,
                 };
   var tableOptions = {width: 'automatic'};
 
   // Instantiate and draw our chart, passing in some options.
-  var chart2 = new google.visualization.LineChart(document.getElementById("chartdiv2"));
+  var chart2 = new google.visualization.CandlestickChart(document.getElementById("chartdiv2"));
   var table2 = new google.visualization.Table(document.getElementById("tabs3"));
   chart2.draw(view, chartOptions);
   table2.draw(view, tableOptions);
@@ -376,7 +394,7 @@ $(function() {
     <div id="tabs12">
       <div id="chartdiv"></div>
     </div>
-    <div class="clear"></div>
+    <!--<div class="clear"></div>-->
     <div id="chartdiv2"></div>
     <div class="clear"></div>
   </div>
