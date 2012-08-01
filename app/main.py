@@ -47,7 +47,7 @@ class ImportMetricHandler(webapp.RequestHandler):
                              display_name=data["display name"],
                              distortion=data["distortion"])
             m.put()
-
+        memcache.flush_all()
 
 class ImportFileSetHandler(webapp.RequestHandler):
     def post(self):
@@ -76,6 +76,7 @@ class ImportFileSetHandler(webapp.RequestHandler):
             model.File(key_name=filename,
                        display_name=filename[:split_index],
                        file_sets=files_added[filename]).put()
+        memcache.flush_all()
 
 class ImportCommitHandler(webapp.RequestHandler):
     def convert_time(self, time, zone):
@@ -108,6 +109,7 @@ class ImportCommitHandler(webapp.RequestHandler):
         data = StringIO.StringIO(self.request.get("data"))
         for line in data:
             self.load(json.loads(line))
+        memcache.flush_all()
 
 
 class ImportCodecMetricHandler(webapp.RequestHandler):
@@ -171,6 +173,7 @@ class ImportCodecMetricHandler(webapp.RequestHandler):
             self.put_metric_index(m, metrics, files)
             self.update_drilldown(m, metrics, files)
         drilldown.save()
+        memcache.flush_all()
 
 def pretty_json(x):
     return json.dumps(x, indent=2, sort_keys=True)
