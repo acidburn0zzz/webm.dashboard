@@ -10,6 +10,12 @@
 
 ## This file contains our necessary database definitions
 
+# Setup django to silence deprecation warning for 0.96
+import os
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
+from google.appengine.dist import use_library
+use_library('django', '1.2')
+
 from google.appengine.ext import db
 from cache import CachedDataView
 import pickle

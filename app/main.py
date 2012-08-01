@@ -215,6 +215,44 @@ def fetch_codec_metric(metric, config, filename, commit):
     result = sorted(result, key=lambda x:x[0])
     return result
 
+@cache_result()
+def fetch_metric_for_fileset(metric, config, files, commit):
+    """This function is a bulk version of fetch_codec_metric()"""
+    indexes = model.CodecMetricIndex.all(keys_only = True)
+    indexes = indexes.filter('metrics =', metric)
+    indexes = indexes.filter('config_name =', config)
+    indexes = indexes.filter('commit =', commit)
+    keys = [k.parent() for k in indexes]
+
+    if len(keys) == 0:
+        return None
+
+    results_by_file = {}
+    for cm in db.get(keys):
+        for filename, runs in cm.data.iteritems():
+            if filename not in files:
+                continue
+            result = results_by_file.get(filename, [])
+            for run in runs:
+                this_run_data = []
+
+                # TODO(jkoleszar): How do we handle this properly?
+                if "Bitrate" in run:
+                    this_run_data.append(run["Bitrate"])
+
+                this_run_data.append(run[metric])
+                result.append(this_run_data)
+            results_by_file[filename] = result
+
+    # Sanity checks
+    for filename, result in results_by_file.iteritems():
+        for r in result[1:]:
+            assert len(r) == len(result[0])
+
+        # Result is a list of lists. Sort by the first element of the nested
+        # list.
+        results_by_file[filename] = sorted(result, key=lambda x:x[0])
+    return results_by_file
 
 class CodecMetricHandler(webapp.RequestHandler):
     def get(self, metric, config, filename, commit):
@@ -285,14 +323,24 @@ def find_baseline(metric, config, filename, commits):
     return None
 
 
-@cache_result()
-def calculate_average_improvement(m, cfg, f, cm, parent):
+def calculate_average_improvement(m, cfg, fs, cm, base_data):
     '''Calculates the average improvement given the set up and the parent
     commit, caching the result'''
-    base_data = fetch_codec_metric(m, cfg, f, parent)
-    data = fetch_codec_metric(m, cfg, f, cm)
-    composite = curve_compare.DataBetter(base_data, data)
-    return composite
+
+    data = fetch_metric_for_fileset(m, cfg, fs, cm)
+    result = {}
+    sum_overall = 0
+    count_overall = 0
+    for f in fs:
+        composite = curve_compare.DataBetter(base_data[f], data[f])
+        composite *= 100 # Make it a percent
+        sum_overall += composite
+        count_overall += 1
+        result[f] = composite
+    if result:
+        return sum_overall / count_overall, result
+    return None, result
+
 
 @cache_result()
 def get_files_from_fileset(fileset, fs_cache):
@@ -315,6 +363,15 @@ class AverageImprovementHandler(webapp.RequestHandler):
                 return []
             return result
 
+        # Find the baseline based on the raw URL variables
+        parent = find_baseline(metrics, configs, filenames, commits)
+        # We format the end of the table with extra info
+        if parent:
+            parent_str = parent[:9]
+        else:
+            parent_str = "None found"
+
+
         # We expect to get filesets instead
         fs_modded = []
         for f in urllib.unquote(filenames).split(","):
@@ -333,6 +390,8 @@ class AverageImprovementHandler(webapp.RequestHandler):
 
         for m in split_field(metrics):
             for cfg in split_field(configs):
+                baseline_data = fetch_metric_for_fileset(m, cfg, filenames,
+                                                         parent)
                 commit_list = field_list(commits)
                 for cm in commit_list:
                     cmdata = commit_cache[cm]
@@ -340,31 +399,12 @@ class AverageImprovementHandler(webapp.RequestHandler):
                              # the table
                     sum_overall = 0
                     count_overall = 0
-                    parent = None
-                    # We get the key of the parent commit (our baseline)
-                    for f in filenames:
-                        if parent is None:
-                            parent = find_baseline(m, cfg, f, commits)
-                        composite = calculate_average_improvement(m, cfg, f, cm, parent)
-
-                        if composite is not None:
-                            sum_overall += composite
-                            count_overall += 1
-                            composite *= 100 # Make it a percent
+                    average, results = calculate_average_improvement(
+                        m, cfg, filenames, cm, baseline_data)
+                    for f, composite in results.iteritems():
                         col.append([f, composite])
 
-                    # We format the end of the table with extra info
-                    if parent:
-                        parent = parent[:9]
-                    else:
-                        parent = "None found"
-
-                    if count_overall != 0:
-                        col.append(['OVERALL: (' + parent + ')',
-                                        sum_overall / count_overall * 100])
-                    else:
-                        col.append(['OVERALL: (' + parent + ')',
-                                    None])
+                    col.append(['OVERALL: (' + parent_str + ')', average])
                     result.append({'col': m+ "/" + cfg + "/" + cm[:9],
                                    'data': col})
         # return the results
