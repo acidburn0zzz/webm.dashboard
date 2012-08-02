@@ -16,6 +16,9 @@ handlers:
 - url: /drilldown/.*
   script: drilldown.py
 
+- url: /gerrit/.*
+  script: gerrit.py
+
 - url: .*
   script: main.py
 

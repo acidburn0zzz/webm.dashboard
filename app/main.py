@@ -18,6 +18,7 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp import util
 from google.appengine.ext import db
+from google.appengine.api import memcache
 
 # Standard libraries
 import datetime
@@ -77,40 +78,6 @@ class ImportFileSetHandler(webapp.RequestHandler):
                        display_name=filename[:split_index],
                        file_sets=files_added[filename]).put()
         memcache.flush_all()
-
-class ImportCommitHandler(webapp.RequestHandler):
-    def convert_time(self, time, zone):
-        class GitTZInfo(datetime.tzinfo):
-            def __init__(self, utcoffset):
-                self.offset = utcoffset
-
-            def dst(self, dt):
-                return datetime.timedelta(0)
-
-            def utcoffset(self, dt):
-                return datetime.timedelta(seconds=self.offset)
-        return datetime.datetime.fromtimestamp(time, GitTZInfo(zone))
-
-    def load(self, data):
-      author_time = self.convert_time(data["author_time"],
-                                      data["author_timezone"])
-      commit_time = self.convert_time(data["commit_time"],
-                                      data["commit_timezone"])
-      c = model.Commit(key_name=data["id"],
-                       author=data["author"],
-                       author_time=author_time,
-                       committer=data["committer"],
-                       commit_time=commit_time,
-                       message=data["message"],
-                       parents=data["parents"])
-      c.put()
-
-    def post(self):
-        data = StringIO.StringIO(self.request.get("data"))
-        for line in data:
-            self.load(json.loads(line))
-        memcache.flush_all()
-
 
 class ImportCodecMetricHandler(webapp.RequestHandler):
     def put_metric_index(self, parent, metrics, files):
@@ -423,7 +390,6 @@ def main():
     application = webapp.WSGIApplication([
         ('/', MainHandler),
         ('/import-metrics', ImportMetricHandler),
-        ('/import-commits', ImportCommitHandler),
         ('/import-filesets', ImportFileSetHandler),
         ('/import-codec-metrics', ImportCodecMetricHandler),
         (r'/metric-data/(.*)/(.*)/(.*)/(.*)', CodecMetricHandler),

@@ -58,6 +58,12 @@ class Commit(db.Model):
     message = db.TextProperty()
     branches = db.StringListProperty()
     parents = db.StringListProperty()
+    gerrit_change_id = db.StringProperty()
+    gerrit_change_num = db.IntegerProperty()
+    gerrit_url = db.StringProperty()
+    gerrit_branch = db.StringProperty()
+    gerrit_patchset_num = db.IntegerProperty()
+    gerrit_patchset_ref = db.StringProperty()
 
 class CommitCache(CachedDataView):
     all_commits = [k.name() for k in Commit.all(keys_only = True)]
