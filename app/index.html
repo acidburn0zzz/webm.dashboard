@@ -148,10 +148,14 @@ function ImprovementTable(data_in) {
   var view;
   var data2;
 
+  var formatter = new google.visualization.NumberFormat(
+      {suffix: '%', fractionDigits: 3});
+
   // We fill our table
   data1.addColumn('string', 'Filename');
   data1.addColumn('number', data_in[0].col);
   data1.addRows(data_in[0].data);
+  formatter.format(data1, 1);
 
   // Make it a chart
   view = new google.visualization.DataView(data1);
@@ -161,6 +165,7 @@ function ImprovementTable(data_in) {
     data2.addColumn('string', 'Filename');
     data2.addColumn('number',  data_in[i].col);
     data2.addRows(data_in[i].data);
+    formatter.format(data2, 1);
 
     // A list of numbers from 1 to i
     leftColumns = range(1, i);
