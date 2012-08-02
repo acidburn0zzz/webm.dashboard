@@ -18,7 +18,8 @@ function treeConfig(TreeModel) {
       icons : false,
     },
     json_data : {
-      data : TreeModel
+      data : TreeModel,
+      progressive_render: true,
     },
     "plugins" : ["themes", "json_data", "ui", "checkbox", "sort"],
     "checkbox" : {
