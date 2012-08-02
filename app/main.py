@@ -253,6 +253,10 @@ def find_baseline(metric, config, filename, commits):
             if commit in candidates:
                 return commit
 
+    # Removes some errors when no commits are selected
+    if len(commits) == 0:
+        return None
+
     candidates = drilldown.query(metric, config, filename, commits)[3]
     commit_data = model.CommitCache()
     commits = field_list(commits)
