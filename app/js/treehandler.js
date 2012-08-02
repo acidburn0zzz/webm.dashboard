@@ -275,9 +275,7 @@ function initTrees(){
 // We create the trees and the tabs to start.
 $(document).ready(function () {
 
-  // Note: remove height to turn off vertical animation
-  //$( "#tabs" ).tabs({event: "mouseover", fx: { height: 'toggle', opacity: 'toggle'} });
-  $( "#tabs" ).tabs({event: "mouseover", fx: {} });
+  $( "#tabs" ).tabs();
   initTrees();
 
 });

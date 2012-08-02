@@ -93,7 +93,7 @@ function ChartFiller() {
             url: metricurl,
             success: function(response){
 
-              // Not ideal to use the url, but necessary
+              // Not ideal to use the url, but necessary for now
               if (is_distortion(this.url.slice(13, 16)))
                 dist_responses.push([response, this.url]);
               else
@@ -173,6 +173,8 @@ function ImprovementTable(data_in) {
   var table = new google.visualization.Table(document.getElementById("tabs11"));
   table.draw(view, tableOptions);
 
+  $('#chartdiv').html("Please select a file (or files) to view graph.");
+
   // We add some bindings to allow for selecting rows of the table
   // Add our selection handler
   google.visualization.events.addListener(table, 'select', selectHandler);
@@ -202,7 +204,7 @@ function ImprovementTable(data_in) {
     ChartFiller();
     if (selection.length == 0) {
       // We get rid of tables that are no longer relevant
-      $('#chartdiv').html("");
+      $('#chartdiv').html("Please select a file (or files) to view graph.");
       $('#tabs2').html("");
       $('#chartdiv2').html("");
       $('#tabs3').html("");
@@ -243,12 +245,12 @@ function drawChart(data_in) {
   //$("#tabs3").text(view.toJSON());
 
   // Set chart options
-  var chartOptions = {title:'Rate Distortion',
+  var chartOptions = {title:'Rate Distortion Curves',
                  width:800,
                  height:600,
                  chartArea: {left: 50, width: "55%"},
-                 hAxis: {title: 'x axis'},
-                 vAxis: {title: 'y axis'},
+                 hAxis: {title: 'Bitrate'},
+                 //vAxis: {title: 'y axis'},
                  'pointSize':2,
                  'lineWidth':1,
                  'interpolateNulls':true,
@@ -301,7 +303,7 @@ function drawChart2(data_in) {
 
   // We now add in other curves, if applicable
   for (var i = 1; i < numCurves; i++){
-    arr = new Array(data_in[0][1].slice(13, -32));
+    arr = new Array(data_in[i][1].slice(13, -32));
     comparr = [];
     data_in1 = data_in[i][0];
     for (var j = 0; j < data_in1.length; j++) {
@@ -338,7 +340,13 @@ $(function() {
       $(this).css("width", '');
     }
   });
+  $("#helpdialog").dialog({ autoOpen: false });
 });
+
+function help() {
+  $("#helpdialog").dialog('open');
+}
+
 </script>
 
 
@@ -354,26 +362,50 @@ $(function() {
 <input type="button" value="Reset" />
 </div>
 
+<div id="helpdialog" title="About this page">
+	<p>To view a graph of performance data, please select some metrics, configurations, filesets and patch sets. The page will automatically update to reflect what data is available. </p>
+</div>
+
+<div id="helpbutton">
+<input type="button" value="Help" onclick="help()"/>
+</div>
+
 <!-- Where the jstrees go -->
-<div id="topcenter" class="ui-widget-content">
+<div id="topcenter" class="ui-widget-content ui-resizable">
+
+<!-- TODO: can we locate the icon at S, rather than SE? -->
+<div unselectable="on" style="z-index: 1001; -moz-user-select: none;"
+class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-arrowthick-2-n-s"></div>
 
 <div id="topcolumnsm">
+  <h3>Metrics</h3>
+  <div id="treeHolder">
   <div id="treeView1">
   </div>
+  </div>
 </div>
 
 <div id="topcolumnsm">
+  <h3>Configurations</h3>
+  <div id="treeHolder">
   <div id="treeView2">
   </div>
+  </div>
 </div>
 
-<div id="topcolumn">
+<div id="topcolumnsm">
+  <h3>File Sets</h3>
+  <div id="treeHolder">
   <div id="treeView3">
+  </div>
   </div>
 </div>
 
 <div id="topcolumn">
+  <h3>Patch Sets</h3>
+  <div id="treeHolder">
   <div id="treeView4">
+  </div>
   </div>
 </div>
 

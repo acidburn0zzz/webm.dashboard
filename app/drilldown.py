@@ -77,6 +77,10 @@ def file_tree_formatter(file_cache):
     for fileset in filesets:
         #formatted.append({"data":fileset, "children":filesets[fileset],
         #                  "attr": {"id": "@" + fileset}})
+        # We remove the All fileset. Currently it is not clear how it should
+        # work with the drilldown procedure.
+        if fileset == "All":
+            continue
         formatted.append({"data":fileset,
                           "attr": {"id": "~" + fileset}})
     return formatted
