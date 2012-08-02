@@ -353,6 +353,13 @@ function help() {
 <!-- ----------------------------------------------------------------------- -->
 </head>
 <body>
+<p align="right">
+{% if user %}
+Welcome, {{ user.nickname }}! (<a href="{{ logout_url }}">Sign Out</a>)
+{% else %}
+<a href="{{ login_url }}">Sign In</a>
+{% endif %}
+</p>
 
 <div id ="main"> <!-- This div exists to test some Jquery binding things -->
 <h1>WebM Development Dashboard</h1>

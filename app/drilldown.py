@@ -18,6 +18,7 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp import util
 from google.appengine.ext import db
+from google.appengine.api import users
 
 import json
 import logging
@@ -105,12 +106,15 @@ class JSTreeNode(object):
     def add_child(self, child):
         self._children.append(child)
 
-@cache_result()
 def commit_tree_formatter(commit_cache):
     change_nodes = {}
     branch_nodes = {}
     other_node = JSTreeNode("Other Commits")
     my_node = JSTreeNode("My Commits")
+    user = users.get_current_user()
+    if user:
+        email = user.email()
+
     for patch, patchdata in commit_cache:
         # We convert the time also to ms for comparison (in sorting)
         prettydate = "%s" %(patchdata["date"])
@@ -158,30 +162,37 @@ def commit_tree_formatter(commit_cache):
                 branch_mine_node = JSTreeNode("mine")
                 branch_node.add_child(branch_open_node)
                 branch_node.add_child(branch_closed_node)
-                branch_node.add_child(branch_mine_node)
+                if user:
+                    branch_node.add_child(branch_mine_node)
                 branch_nodes[branch] = branch_node
             else:
                 branch_node = branch_nodes[branch]
                 branch_open_node = branch_node._children[0]
                 branch_closed_node = branch_node._children[1]
-                branch_mine_node = branch_node._children[2]
+                if user:
+                    branch_mine_node = branch_node._children[2]
+
             if change['status'] == 'NEW':
                 branch_open_node.add_child(change_node)
             else:
                 branch_closed_node.add_child(change_node)
-            if 'jkoleszar@google.com' in patchdata["author"]:
+            if user and email in patchdata["author"]:
                 branch_mine_node.add_child(change_node)
 
         else:
             other_node.add_child(patch_node)
 
         # Is this also one of my nodes?
-        if 'jkoleszar@google.com' in patchdata["author"]:
+        if user and email in patchdata["author"]:
             my_node.add_child(patch_node)
 
     # TODO: give branches ids?
     result = []
-    for node in branch_nodes.values() + [other_node, my_node]:
+    root_nodes = branch_nodes.values()
+    root_nodes.append(other_node)
+    if user:
+        root_nodes.append(my_node)
+    for node in root_nodes:
         result.append(node.dump())
     return result
 
