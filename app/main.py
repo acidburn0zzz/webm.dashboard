@@ -323,11 +323,6 @@ def get_files_from_fileset(fileset, fs_cache):
 class AverageImprovementHandler(webapp.RequestHandler):
     def get(self, metrics, configs, filenames, commits):
         """Calculates the requested composite metrics and outputs as JSON"""
-        def split_field(field):
-            if field:
-                for f in urllib.unquote(field).split(","):
-                    yield f
-
         def field_list(field):
             '''Returns the field as a list of strings.'''
             result = urllib.unquote(field).split(",")
@@ -360,24 +355,34 @@ class AverageImprovementHandler(webapp.RequestHandler):
         result = []
         commit_cache = model.CommitCache()
 
-        for m in split_field(metrics):
-            for cfg in split_field(configs):
+        metrics = field_list(metrics)
+        configs = field_list(configs)
+        commits = field_list(commits)
+        for m in metrics:
+            for cfg in configs:
                 baseline_data = fetch_metric_for_fileset(m, cfg, filenames,
                                                          parent)
-                commit_list = field_list(commits)
-                for cm in commit_list:
+                for cm in commits:
                     cmdata = commit_cache[cm]
                     col = [] # Each m, cfg, cm combination will be a column in
                              # the table
-                    sum_overall = 0
-                    count_overall = 0
                     average, results = calculate_average_improvement(
                         m, cfg, filenames, cm, baseline_data)
                     for f, composite in results.iteritems():
                         col.append([f, composite])
 
+                    # Build the column name
+                    col_name = []
+                    if len(metrics) > 1:
+                        col_name.append(m)
+                    if len(configs) > 1:
+                        col_name.append(cfg)
+                    if len(col_name) == 0 or len(commits) > 1:
+                        col_name.append(cm[:9])
+                    col_name = "/".join(col_name)
+
                     col.append(['OVERALL: (' + parent_str + ')', average])
-                    result.append({'col': m+ "/" + cfg + "/" + cm[:9],
+                    result.append({'col': col_name,
                                    'data': col})
         # return the results
         self.response.out.write(pretty_json(result))

@@ -44,6 +44,24 @@ var FileTableState = new Array();
 <script>
 google.load('visualization', '1.0', {'packages':['corechart', 'table']});
 
+function FetchMetric(metricurl, series_name, dist_responses, bar_responses) {
+  $.ajax({
+    type: "GET",
+    url: metricurl,
+    success: function(response){
+
+      // Not ideal to use the url, but necessary
+      if (is_distortion(this.url.slice(13, 16)))
+        dist_responses.push([response, series_name]);
+      else
+        bar_responses.push([response, series_name]);
+    },
+    error: function(xhr, ajaxOptions, thrownError) {
+        //$("#chartdiv").html("WHAA");
+    },
+  });
+}
+
 function ChartFiller() {
   var dist_responses = new Array();
   var bar_responses = new Array();
@@ -88,21 +106,23 @@ function ChartFiller() {
           var commit = commits[t];
           metricurl = "/metric-data/" + metric + "/" + config + "/" + file + "/" + commit
 
-          $.ajax({
-            type: "GET",
-            url: metricurl,
-            success: function(response){
+          // Build a more readable version of the series name
+          var series_name = []
+          if (MetricState.length > 1) {
+            series_name.push(metric);
+          }
+          if (ConfigState.length > 1) {
+            series_name.push(config);
+          }
+          if (files.length > 1) {
+            series_name.push(file);
+          }
+          if (series_name.length == 0 || commits.length > 1) {
+            series_name.push(commit.slice(0,9));
+          }
+          series_name = series_name.join("/");
 
-              // Not ideal to use the url, but necessary for now
-              if (is_distortion(this.url.slice(13, 16)))
-                dist_responses.push([response, this.url]);
-              else
-                bar_responses.push([response, this.url]);
-            },
-            error: function(xhr, ajaxOptions, thrownError) {
-                //$("#chartdiv").html("WHAA");
-            },
-          });
+          FetchMetric(metricurl, series_name, dist_responses, bar_responses);
         }
       }
     }
@@ -229,7 +249,7 @@ function drawChart(data_in) {
 
   var data1 = new google.visualization.DataTable();
   data1.addColumn('number', 'X');
-  data1.addColumn('number', data_in[0][1].slice(13, -32));
+  data1.addColumn('number', data_in[0][1]);
   data1.addRows(data_in1);
   view = new google.visualization.DataView(data1);
 
@@ -238,7 +258,7 @@ function drawChart(data_in) {
     data2 = new google.visualization.DataTable();
     data2.addColumn('number', 'X');
 
-    data2.addColumn('number',  data_in[i][1].slice(13, -32));
+    data2.addColumn('number',  data_in[i][1]);
     data2.addRows(data_in2);
 
     // A list of numbers from 1 to i
