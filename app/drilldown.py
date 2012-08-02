@@ -20,6 +20,7 @@ from google.appengine.ext.webapp import util
 from google.appengine.ext import db
 
 import json
+import logging
 import re
 import urllib
 import time
@@ -28,6 +29,7 @@ import time
 from cache import CachedDataView, cache_result
 from google.appengine.api import memcache
 from model import FileCache, CommitCache, MetricCache, FileSetCache
+from gerrit import gerrit
 
 class DrilldownCommitCache(CachedDataView):
     def begin_getitem(self, commit):
@@ -41,7 +43,8 @@ class DrilldownCommitCache(CachedDataView):
         changeid = re.search(r'Change-Id: ([I0-9a-f]+)', commitdata.message)
         if changeid:
             subject = "%s: %s"%(changeid.group(1)[:9], subject)
-        commitdata = {"displayname" : "Patch Set: (" + commit[:8] +")",
+        commitdata = {"displayname": "Patch Set %s (%s)"%(
+                          commitdata.gerrit_patchset_num, commit[:8]),
                      "commitSet" : subject,
                      "parents" : commitdata.parents,
                      "date" : commitdata.commit_time,
@@ -78,44 +81,105 @@ def file_tree_formatter(file_cache):
                           "attr": {"id": "~" + fileset}})
     return formatted
 
+class JSTreeNode(object):
+    def __init__(self, data):
+        self._attr = {}
+        self._data = data
+        self._children = []
+
+    def __setattr__(self, key, value):
+        if key[0] != "_":
+            self._attr[key] = value
+        self.__dict__[key] = value
+
+    def dump(self):
+        result = {"attr": self._attr, "data": self._data}
+        if self._children:
+            result["children"] = [x.dump() for x in self._children]
+        return result
+
+    def add_child(self, child):
+        self._children.append(child)
+
 @cache_result()
 def commit_tree_formatter(commit_cache):
-    commitSets = {}
+    change_nodes = {}
+    branch_nodes = {}
+    other_node = JSTreeNode("Other Commits")
+    my_node = JSTreeNode("My Commits")
     for patch, patchdata in commit_cache:
-        commitDescription = patchdata["commitSet"]
-
-        prettydate = "%s" %(patchdata["date"])
-
         # We convert the time also to ms for comparison (in sorting)
+        prettydate = "%s" %(patchdata["date"])
         ms = time.mktime(patchdata["date"].utctimetuple())
         ms += getattr(patchdata["date"], 'microseconds', 0) / 1000
         date = int(ms)
 
-        if commitDescription in commitSets:
-            commitSets[commitDescription].append({"attr": {"id": patch,
-                                                           "date" : date,
-                                                           "prettydate" : prettydate,
-                                                           "author" : patchdata["author"]},
-                                                  "data":patchdata["displayname"]})
+        # Build the node for the current patch
+        patch_node = JSTreeNode(patchdata["commitSet"])
+        patch_node.id = patch
+        patch_node.date = date
+        patch_node.prettydate = prettydate
+        patch_node.author = patchdata["author"]
+
+        # Find a parent for the node
+        if patch in gerrit:
+            logging.info("building gerrit nodes for patch %s"%patch)
+            patchset = gerrit[patch]
+            changeid = patchset['Change-Id']
+            change = gerrit[changeid]
+
+            import copy
+            gerrit_patch_node = copy.deepcopy(patch_node)
+            gerrit_patch_node._data = patchdata["displayname"]
+
+            # Add the patch to the change node
+            if changeid not in change_nodes:
+                logging.info("built change node %s"%changeid)
+                change_node = JSTreeNode(change['subject'])
+                change_node.id = changeid
+                change_node.date = date
+                change_node.author = patchdata["author"]
+                change_nodes[changeid] = change_node
+            else:
+                change_node = change_nodes[changeid]
+            change_node.add_child(gerrit_patch_node)
+
+            # Add the change to the branch node
+            branch = change['branch']
+            if branch not in branch_nodes:
+                logging.info("built branch node %s"%branch)
+                branch_node = JSTreeNode(branch)
+                branch_open_node = JSTreeNode("open")
+                branch_closed_node = JSTreeNode("closed")
+                branch_mine_node = JSTreeNode("mine")
+                branch_node.add_child(branch_open_node)
+                branch_node.add_child(branch_closed_node)
+                branch_node.add_child(branch_mine_node)
+                branch_nodes[branch] = branch_node
+            else:
+                branch_node = branch_nodes[branch]
+                branch_open_node = branch_node._children[0]
+                branch_closed_node = branch_node._children[1]
+                branch_mine_node = branch_node._children[2]
+            if change['status'] == 'NEW':
+                branch_open_node.add_child(change_node)
+            else:
+                branch_closed_node.add_child(change_node)
+            if 'jkoleszar@google.com' in patchdata["author"]:
+                branch_mine_node.add_child(change_node)
+
         else:
-            commitSets[commitDescription] = [{"attr": {"id": patch,
-                                                        "date" : date,
-                                                        "prettydate" : prettydate,
-                                                        "author" : patchdata["author"]},
-                                              "data":patchdata["displayname"]}]
-    formatted = []
-    n = 0
-    for commitDescription in commitSets:
-        date = commitSets[commitDescription][0]["attr"]["date"]
-        prettydate = commitSets[commitDescription][0]["attr"]["prettydate"]
-        formatted.append({"data":commitDescription,
-                          "children":commitSets[commitDescription],
-                          "attr": {"id": "_c" + str(n),
-                                   "date" : date,
-                                   "author" : "See patch",
-                                   "prettydate" : prettydate }})
-        n += 1
-    return formatted
+            other_node.add_child(patch_node)
+
+        # Is this also one of my nodes?
+        if 'jkoleszar@google.com' in patchdata["author"]:
+            my_node.add_child(patch_node)
+
+    # TODO: give branches ids?
+    result = []
+    for node in branch_nodes.values() + [other_node, my_node]:
+        result.append(node.dump())
+    return result
 
 def tree_formatter(query_result):
     #memcache.flush_all(); # For debugging

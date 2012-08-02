@@ -37,6 +37,7 @@ class Gerrit(object):
         self._sort_key = None
         self._changes = {}
         self._patches = {}
+        self._once = False
 
     def _load(self, data):
         if "id" in data:
@@ -76,7 +77,16 @@ class Gerrit(object):
 
         return again
 
+    def _poll_once(self):
+        if not self._once:
+            self.poll()
+
+    def __contains__(self, item):
+        self._poll_once()
+        return item in self._changes or item in self._patches
+
     def __getitem__(self, item):
+        self._poll_once()
         if item in self._changes:
             return self._changes[item]
         if item in self._patches:
@@ -85,6 +95,7 @@ class Gerrit(object):
         return None
 
     def poll(self):
+        self._once = True
         while self._poll():
             pass
 
