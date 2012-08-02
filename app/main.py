@@ -19,6 +19,7 @@ from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp import util
 from google.appengine.ext import db
 from google.appengine.api import memcache
+from google.appengine.api import users
 
 # Standard libraries
 import datetime
@@ -383,7 +384,11 @@ class AverageImprovementHandler(webapp.RequestHandler):
 
 class MainHandler(webapp.RequestHandler):
     def get(self):
-        values = {} # This is the dictionary of template values passed to html
+        values = {
+            "user": users.get_current_user(),
+            "login_url": users.create_login_url("/"),
+            "logout_url": users.create_logout_url("/")
+        }
         self.response.out.write(template.render("index.html", values))
 
 class ChartHandler(webapp.RequestHandler):
