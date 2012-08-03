@@ -29,7 +29,7 @@ import time
 # Here is everything we need to format the output for the UI
 from cache import CachedDataView, cache_result
 from google.appengine.api import memcache
-from model import FileCache, MetricCache, FileSetCache
+from model import FileCache, MetricCache
 from gerrit import gerrit
 import model
 
@@ -422,38 +422,28 @@ class DrilldownMatrix(object):
             else:
                 yield None
 
-        fs_modded = []
-        for f in urllib.unquote(filename).split(","):
-            if f is not None and f != "" and f[0] == "~":
-                fs_modded.append(f[1:])
-        fs_cache = FileSetCache(fs_modded)
+        def split_filename(field):
+            if field:
+                for fs in urllib.unquote(field).split(","):
+                    if fs[0] == "~":
+                        for f in model.filesets()[fs[1:]].files:
+                            yield f
+                    else:
+                        yield fs
+            else:
+                yield None
 
         result = None
         for m in split_field(metric):
             for cfg in split_field(config):
-                for f in split_field(filename):
-                    if f is not None and f[0] == '~' :
-                        # We have a fileset instead of a file
-                        # We replace any filesets with filenames
-                        fsdata = fs_cache[f[1:]]
-
-                        for fname in fsdata.files:
-                            for cm in split_field(commit):
-                                if not result:
-                                    result = self.query_(m,cfg,fname,cm)
-                                else:
-                                    r = self.query_(m,cfg,fname,cm)
-                                    for idx in range(4):
-                                        result[idx] = result[idx].intersection(r[idx])
-
-                    else: # Do we ever have a file, not fileset?
-                        for cm in split_field(commit):
-                            if not result:
-                                result = self.query_(m,cfg,f,cm)
-                            else:
-                                r = self.query_(m,cfg,f,cm)
-                                for idx in range(4):
-                                    result[idx] = result[idx].intersection(r[idx])
+                for f in split_filename(filename):
+                    for cm in split_field(commit):
+                        if not result:
+                            result = self.query_(m,cfg,f,cm)
+                        else:
+                            r = self.query_(m,cfg,f,cm)
+                            for idx in range(4):
+                                result[idx] = result[idx].intersection(r[idx])
         return result
 
 drilldown = DrilldownMatrix()

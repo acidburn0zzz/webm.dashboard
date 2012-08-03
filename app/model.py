@@ -62,6 +62,17 @@ class FileSetCache(CachedDataView):
         key = db.Key.from_path('FileSet', fileset)
         return db.get_async(key)
 
+def reset_fileset_cache():
+    global _fileset_cache
+
+    _fileset_cache = FileSetCache(
+        [k.name() for k in FileSet.all(keys_only = True)])
+
+def filesets():
+    return _fileset_cache
+
+reset_fileset_cache()
+
 class Commit(db.Model):
     author = db.StringProperty()
     author_time = db.DateTimeProperty()

@@ -81,6 +81,7 @@ class ImportFileSetHandler(webapp.RequestHandler):
                        display_name=filename[:split_index],
                        file_sets=files_added[filename]).put()
         memcache.flush_all()
+        reset_fileset_cache()
 
 class ImportCodecMetricHandler(webapp.RequestHandler):
     def put_metric_index(self, parent, metrics, files):
@@ -327,12 +328,6 @@ def calculate_improvement(m, cfg, fs, cm, base_data, composite_fn):
         return sum_overall / count_overall, result
     return None, result
 
-@cache_result()
-def get_files_from_fileset(fileset, fs_cache):
-    '''Returns a list of files in a given fileset.'''
-    fsdata = fs_cache[fileset]
-    return fsdata.files[:]
-
 class AverageImprovementHandler(webapp.RequestHandler):
     def get(self, metrics, configs, filenames, commits):
         """Calculates the requested composite metrics and outputs as JSON"""
@@ -343,6 +338,17 @@ class AverageImprovementHandler(webapp.RequestHandler):
                 return []
             return result
 
+        def filename_list(field):
+            def generate(field):
+                if field:
+                    for fs in urllib.unquote(field).split(","):
+                        if fs[0] == "~":
+                            for f in model.filesets()[fs[1:]].files:
+                                yield f
+                        else:
+                            yield fs
+            return [x for x in generate(field)]
+
         # Find the baseline based on the raw URL variables
         parent = find_baseline(metrics, configs, filenames, commits)
         # We format the end of the table with extra info
@@ -351,25 +357,12 @@ class AverageImprovementHandler(webapp.RequestHandler):
         else:
             parent_str = "None found"
 
-
-        # We expect to get filesets instead
-        fs_modded = []
-        for f in urllib.unquote(filenames).split(","):
-            if f is not None and f != "" and f[0] == "~":
-                fs_modded.append(f[1:])
-        fileset_cache = model.FileSetCache(fs_modded)
-
-        fsets = set([])
-        for fs in urllib.unquote(filenames).split(","):
-            if fs != '':
-                fsets.update(get_files_from_fileset(fs[1:], fileset_cache))
-        filenames = fsets
-
         result = []
         commit_cache = model.commits()
 
         metrics = field_list(metrics)
         configs = field_list(configs)
+        filenames = filename_list(filenames)
         commits = field_list(commits)
         for m in metrics:
             if model.metrics()[m].distortion:
