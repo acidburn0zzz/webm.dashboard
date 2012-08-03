@@ -24,6 +24,7 @@ class Metric(db.Model):
     # key_name is the metric name (a less pretty version of display name)
     display_name = db.StringProperty()
     distortion = db.BooleanProperty()
+    yaxis = db.StringProperty()
 
 class MetricCache(CachedDataView):
     def begin_getitem(self, metricname):

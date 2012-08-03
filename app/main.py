@@ -47,7 +47,8 @@ class ImportMetricHandler(webapp.RequestHandler):
             # For use later, we also add a list of filenames in the fileset
             m = model.Metric(key_name=data["name"],
                              display_name=data["display name"],
-                             distortion=data["distortion"])
+                             distortion=data["distortion"],
+                             yaxis=data.get("yaxis", None))
             m.put()
         memcache.flush_all()
         model.reset_metric_cache()
@@ -227,7 +228,9 @@ class CodecMetricHandler(webapp.RequestHandler):
     def get(self, metric, config, filename, commit):
         """Fetches the requested metric data as JSON"""
 
-        result = fetch_codec_metric(metric, config, filename, commit)
+        result = {'yaxis': model.metrics()[metric].yaxis,
+                  'data': fetch_codec_metric(metric, config, filename, commit),
+                  }
 
         # Return the result
         if result:

@@ -1,10 +1,10 @@
-{"name" : "AVGPsnr", "display name" : "AVGPsnr", "distortion" : true}
-{"name" : "AVPsnrP", "display name" : "AVPsnrP", "distortion" : true}
+{"name" : "AVGPsnr", "display name" : "AVGPsnr", "distortion" : true, "yaxis" : "PSNR (dB)"}
+{"name" : "AVPsnrP", "display name" : "AVPsnrP", "distortion" : true, "yaxis" : "PSNR (dB)"}
 {"name" : "Bitrate", "display name" : "", "distortion" : false}
-{"name" : "CxFPS", "display name" : "CxFPS", "distortion" : false}
-{"name" : "DxFPS", "display name" : "DxFPS", "distortion" : false}
-{"name" : "GLBPsnr", "display name" : "GLBPsnr", "distortion" : true}
-{"name" : "GLPsnrP", "display name" : "GLPsnrP", "distortion" : true}
+{"name" : "CxFPS", "display name" : "CxFPS", "distortion" : false, "yaxis" : "Frames Per Second (FPS)"}
+{"name" : "DxFPS", "display name" : "DxFPS", "distortion" : false, "yaxis" : "Frames Per Second (FPS)"}
+{"name" : "GLBPsnr", "display name" : "GLBPsnr", "distortion" : true, "yaxis" : "PSNR (dB)"}
+{"name" : "GLPsnrP", "display name" : "GLPsnrP", "distortion" : true, "yaxis" : "PSNR (dB)"}
 {"name" : "Time(us)", "display name" : "", "distortion" : false}
-{"name" : "VPXSSIM", "display name" : "VPXSSIM", "distortion" : true}
+{"name" : "VPXSSIM", "display name" : "VPXSSIM", "distortion" : true, "yaxis" : "SSIM (dB)"}
 {"name" : "target_bitrate", "display name" : "", "distortion" : false}

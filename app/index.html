@@ -252,11 +252,11 @@ function drawChart(data_in) {
   var data1 = new google.visualization.DataTable();
   data1.addColumn('number', 'X');
   data1.addColumn('number', data_in[0].series_name.label);
-  data1.addRows(data_in1);
+  data1.addRows(data_in1.data);
   view = new google.visualization.DataView(data1);
 
   for (var i = 1; i < numCurves; i++){
-    data_in2 = data_in[i].response;
+    data_in2 = data_in[i].response.data;
     data2 = new google.visualization.DataTable();
     data2.addColumn('number', 'X');
 
@@ -276,6 +276,7 @@ function drawChart(data_in) {
                  width:800,
                  height:600,
                  chartArea: {left: 50, width: "55%"},
+                 vAxis: {title: data_in1.yaxis},
                  hAxis: {title: 'Bitrate'},
                  //vAxis: {title: 'y axis'},
                  'pointSize':2,
@@ -330,7 +331,7 @@ function drawChart2(data_in) {
 
     // four columns per series (commit)
     for (var series = 0; series < data_in.length; series++) {
-      var series_data = data_in[series][rowidx].response;
+      var series_data = data_in[series][rowidx].response.data;
       var comparr = [];
       for (var i = 0; i < series_data.length; i++) {
         comparr[i] = series_data[i][0];
@@ -352,6 +353,7 @@ function drawChart2(data_in) {
   var chartOptions = {title:'Performance',
                  width:800,
                  height:600,
+                 vAxis: {title: data_in[0][0].response.yaxis},
                 };
   var tableOptions = {width: 'automatic'};
 
