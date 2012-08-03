@@ -15,11 +15,7 @@
 
 function is_distortion(metric)
 {
-  if (['CxF', 'DxF'].indexOf(metric) != -1) {
-    return false;
-  }
-  else
-    return true;
+  return (['CxFPS', 'DxFPS'].indexOf(metric) == -1);
 };
 
 function range(start, end)
@@ -44,17 +40,12 @@ var FileTableState = new Array();
 <script>
 google.load('visualization', '1.0', {'packages':['corechart', 'table']});
 
-function FetchMetric(metricurl, series_name, dist_responses, bar_responses) {
+function FetchMetric(metricurl, series_name, responses) {
   $.ajax({
     type: "GET",
     url: metricurl,
     success: function(response){
-
-      // Not ideal to use the url, but necessary
-      if (is_distortion(this.url.slice(13, 16)))
-        dist_responses.push([response, series_name]);
-      else
-        bar_responses.push([response, series_name]);
+      responses.push({response: response, series_name: series_name});
     },
     error: function(xhr, ajaxOptions, thrownError) {
         //$("#chartdiv").html("WHAA");
@@ -67,7 +58,7 @@ function ChartFiller() {
   var bar_responses = new Array();
 
   var queryNum = MetricState.length * ConfigState.length *
-                 FileState.length * CommitState.length;
+                 FileTableState.length * CommitState.length;
   //$('#tabs3').html(queryNum);
 
   // Wait until all data is fetched to generate graphs
@@ -94,6 +85,12 @@ function ChartFiller() {
   //var files = FileState.filter(removeParents);
   var files = FileTableState;
   var commits = CommitState.filter(removeParents);
+
+  // one series per commit
+  if (queryNum)
+    for (var t = 0; t < commits.length; t++)
+      bar_responses[t] = new Array();
+
   // Ew, quadruple nested loop
   for (var i = 0; i < MetricState.length; i++) {
     for (var j = 0; j < ConfigState.length; j++) {
@@ -105,6 +102,7 @@ function ChartFiller() {
           var file = files[k];
           var commit = commits[t];
           metricurl = "/metric-data/" + metric + "/" + config + "/" + file + "/" + commit
+          commit = commit.slice(0,9);
 
           // Build a more readable version of the series name
           var series_name = []
@@ -114,15 +112,19 @@ function ChartFiller() {
           if (ConfigState.length > 1) {
             series_name.push(config);
           }
-          if (files.length > 1) {
+          if (series_name.length == 0 || files.length > 1) {
             series_name.push(file);
           }
-          if (series_name.length == 0 || commits.length > 1) {
-            series_name.push(commit.slice(0,9));
-          }
-          series_name = series_name.join("/");
 
-          FetchMetric(metricurl, series_name, dist_responses, bar_responses);
+          if (is_distortion(metric)) {
+            if (commits.length > 1)
+              series_name.push(commit)
+            series_name = {label: series_name.join(" "), commit: commit};
+            FetchMetric(metricurl, series_name, dist_responses);
+          } else {
+            series_name = {label: series_name.join(" "), commit: commit};
+            FetchMetric(metricurl, series_name, bar_responses[t]);
+          }
         }
       }
     }
@@ -245,20 +247,20 @@ function drawChart(data_in) {
   var data2;
 
   // We have at least one curve
-  data_in1 = data_in[0][0];
+  data_in1 = data_in[0].response;
 
   var data1 = new google.visualization.DataTable();
   data1.addColumn('number', 'X');
-  data1.addColumn('number', data_in[0][1]);
+  data1.addColumn('number', data_in[0].series_name.label);
   data1.addRows(data_in1);
   view = new google.visualization.DataView(data1);
 
   for (var i = 1; i < numCurves; i++){
-    data_in2 = data_in[i][0];
+    data_in2 = data_in[i].response;
     data2 = new google.visualization.DataTable();
     data2.addColumn('number', 'X');
 
-    data2.addColumn('number',  data_in[i][1]);
+    data2.addColumn('number',  data_in[i].series_name.label);
     data2.addRows(data_in2);
 
     // A list of numbers from 1 to i
@@ -293,10 +295,6 @@ function drawChart(data_in) {
 function drawChart2(data_in) {
   // We make a candlestick chart
 
-  var numCurves = data_in.length;
-  var view;
-  var data2;
-
   function find_min_avg_max(arr) {
     var min_ele = arr[0];
     var max_ele = arr[0];
@@ -314,31 +312,40 @@ function drawChart2(data_in) {
     return [min_ele, sum/count, sum/count, max_ele];
   }
 
-  // We have at least one curve
-  data_in1 = data_in[0][0];
+  var mat = [[]]
 
-  // We convert it to the proper format [title, d1, d2, d3, d4]
-  var arr = new Array(data_in[0][1].slice(13, -32));
-  var comparr = [];
-  for (var j = 0; j < data_in1.length; j++) {
-    comparr[j] = data_in1[j][1];
+  // series labels, one per commit
+  mat[0][0] = "unused";
+  for (var series = 0; series < data_in.length; series++) {
+    var series_name = data_in[series][0].series_name;
+
+    for (var i = 0; i<4; i++)
+      mat[0][series*4 + i + 1] = series_name.commit;
   }
-  arr = arr.concat(find_min_avg_max(comparr));
-  var mat = [arr];
 
-  // We now add in other curves, if applicable
-  for (var i = 1; i < numCurves; i++){
-    arr = new Array(data_in[i][1].slice(13, -32));
-    comparr = [];
-    data_in1 = data_in[i][0];
-    for (var j = 0; j < data_in1.length; j++) {
-      comparr[j] = data_in1[j][1];
+  // one table row per file
+  for (var rowidx = 0; rowidx < data_in[0].length; rowidx++) {
+    var row_label = data_in[0][rowidx].series_name.label;
+    var row = new Array(row_label);
+
+    // four columns per series (commit)
+    for (var series = 0; series < data_in.length; series++) {
+      var series_data = data_in[series][rowidx].response;
+      var comparr = [];
+      for (var i = 0; i < series_data.length; i++) {
+        comparr[i] = series_data[i][1]; // hmm...
+      }
+      row = row.concat(find_min_avg_max(comparr));
     }
-    arr = arr.concat(find_min_avg_max(comparr));
-    mat[i] = arr;
+    mat[rowidx+1] = row;
   }
 
-  var data1 = new google.visualization.arrayToDataTable(mat, true);
+  // Convert to a data table and format for display
+  var formatter = new google.visualization.NumberFormat(
+      {fractionDigits: 3});
+  var data1 = new google.visualization.arrayToDataTable(mat, false);
+  for (var i = 1; i < mat[1].length; i++)
+      formatter.format(data1, i);
   view = new google.visualization.DataView(data1);
 
   // Set chart options
