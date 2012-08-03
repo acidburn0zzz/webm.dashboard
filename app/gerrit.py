@@ -150,6 +150,7 @@ class ImportCommitHandler(webapp.RequestHandler):
         for line in data:
             self.load(json.loads(line))
         memcache.flush_all()
+        model.reset_commit_cache()
 
 
 def main():

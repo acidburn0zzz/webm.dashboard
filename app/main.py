@@ -260,7 +260,7 @@ def find_baseline(metric, config, filename, commits):
         return None
 
     candidates = drilldown.query(metric, config, filename, commits)[3]
-    commit_data = model.CommitCache()
+    commit_data = model.commits()
     commits = field_list(commits)
     parentage = {}
     for commit in commits:
@@ -363,7 +363,7 @@ class AverageImprovementHandler(webapp.RequestHandler):
         filenames = fsets
 
         result = []
-        commit_cache = model.CommitCache()
+        commit_cache = model.commits()
 
         metrics = field_list(metrics)
         configs = field_list(configs)

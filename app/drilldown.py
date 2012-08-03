@@ -29,7 +29,7 @@ import time
 # Here is everything we need to format the output for the UI
 from cache import CachedDataView, cache_result
 from google.appengine.api import memcache
-from model import FileCache, CommitCache, MetricCache, FileSetCache
+from model import FileCache, MetricCache, FileSetCache
 from gerrit import gerrit
 
 class DrilldownCommitCache(CachedDataView):

@@ -77,13 +77,20 @@ class Commit(db.Model):
     gerrit_patchset_ref = db.StringProperty()
 
 class CommitCache(CachedDataView):
-    all_commits = [k.name() for k in Commit.all(keys_only = True)]
-    def __init__(self):
-        super(CommitCache, self).__init__(self.all_commits)
-
     def begin_getitem(self, commit):
         key = db.Key.from_path('Commit', commit)
         return db.get_async(key)
+
+def reset_commit_cache():
+    global _commit_cache
+
+    _commit_cache = CommitCache(
+        [k.name() for k in Commit.all(keys_only = True)])
+
+def commits():
+    return _commit_cache
+
+reset_commit_cache()
 
 class DictProperty(db.Property):
   data_type = dict
