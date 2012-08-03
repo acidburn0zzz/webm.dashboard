@@ -333,7 +333,7 @@ function drawChart2(data_in) {
       var series_data = data_in[series][rowidx].response;
       var comparr = [];
       for (var i = 0; i < series_data.length; i++) {
-        comparr[i] = series_data[i][1]; // hmm...
+        comparr[i] = series_data[i][0];
       }
       row = row.concat(find_min_avg_max(comparr));
     }

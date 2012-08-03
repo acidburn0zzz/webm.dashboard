@@ -50,6 +50,7 @@ class ImportMetricHandler(webapp.RequestHandler):
                              distortion=data["distortion"])
             m.put()
         memcache.flush_all()
+        model.reset_metric_cache()
 
 class ImportFileSetHandler(webapp.RequestHandler):
     def post(self):
@@ -162,13 +163,13 @@ def fetch_codec_metric(metric, config, filename, commit):
     if len(keys) == 0:
         return None
 
+    metric_data = model.metrics()[metric]
     result=[]
     for cm in db.get(keys):
         for run in cm.data[filename]:
             this_run_data = []
 
-            # TODO(jkoleszar): How do we handle this properly?
-            if "Bitrate" in run:
+            if metric_data.distortion:
                 this_run_data.append(run["Bitrate"])
 
             this_run_data.append(run[metric])
@@ -195,6 +196,7 @@ def fetch_metric_for_fileset(metric, config, files, commit):
     if len(keys) == 0:
         return None
 
+    metric_data = model.metrics()[metric]
     results_by_file = {}
     for cm in db.get(keys):
         for filename, runs in cm.data.iteritems():
@@ -204,8 +206,7 @@ def fetch_metric_for_fileset(metric, config, files, commit):
             for run in runs:
                 this_run_data = []
 
-                # TODO(jkoleszar): How do we handle this properly?
-                if "Bitrate" in run:
+                if metric_data.distortion:
                     this_run_data.append(run["Bitrate"])
 
                 this_run_data.append(run[metric])
@@ -295,7 +296,18 @@ def find_baseline(metric, config, filename, commits):
     return None
 
 
-def calculate_average_improvement(m, cfg, fs, cm, base_data):
+def rd_improvement(base_data, data):
+    return curve_compare.DataBetter(base_data, data) * 100
+
+def mean_improvement(base_data, data):
+    def sum0(vals):
+        return sum([x[0] for x in vals])
+
+    base_mean = sum0(base_data) / len(base_data)
+    mean = sum0(data) / len(data)
+    return (mean / base_mean - 1) * 100
+
+def calculate_improvement(m, cfg, fs, cm, base_data, composite_fn):
     '''Calculates the average improvement given the set up and the parent
     commit, caching the result'''
 
@@ -304,15 +316,13 @@ def calculate_average_improvement(m, cfg, fs, cm, base_data):
     sum_overall = 0
     count_overall = 0
     for f in fs:
-        composite = curve_compare.DataBetter(base_data[f], data[f])
-        composite *= 100 # Make it a percent
+        composite = composite_fn(base_data[f], data[f])
         sum_overall += composite
         count_overall += 1
         result[f] = composite
     if result:
         return sum_overall / count_overall, result
     return None, result
-
 
 @cache_result()
 def get_files_from_fileset(fileset, fs_cache):
@@ -359,6 +369,11 @@ class AverageImprovementHandler(webapp.RequestHandler):
         configs = field_list(configs)
         commits = field_list(commits)
         for m in metrics:
+            if model.metrics()[m].distortion:
+                improvement = rd_improvement
+            else:
+                improvement = mean_improvement
+
             for cfg in configs:
                 baseline_data = fetch_metric_for_fileset(m, cfg, filenames,
                                                          parent)
@@ -366,8 +381,8 @@ class AverageImprovementHandler(webapp.RequestHandler):
                     cmdata = commit_cache[cm]
                     col = [] # Each m, cfg, cm combination will be a column in
                              # the table
-                    average, results = calculate_average_improvement(
-                        m, cfg, filenames, cm, baseline_data)
+                    average, results = calculate_improvement(
+                        m, cfg, filenames, cm, baseline_data, improvement)
                     for f, composite in results.iteritems():
                         col.append([f, composite])
 

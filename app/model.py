@@ -30,6 +30,17 @@ class MetricCache(CachedDataView):
         key = db.Key.from_path('Metric', metricname)
         return db.get_async(key)
 
+def reset_metric_cache():
+    global _metric_cache
+
+    _metric_cache = MetricCache(
+        [k.name() for k in Metric.all(keys_only = True)])
+
+def metrics():
+    return _metric_cache
+
+reset_metric_cache()
+
 class File(db.Model):
     # key_name is the filename
     display_name = db.StringProperty()
