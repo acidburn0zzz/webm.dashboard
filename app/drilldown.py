@@ -31,6 +31,7 @@ from cache import CachedDataView, cache_result
 from google.appengine.api import memcache
 from model import FileCache, MetricCache, FileSetCache
 from gerrit import gerrit
+import model
 
 class DrilldownCommitCache(CachedDataView):
     def begin_getitem(self, commit):
@@ -393,6 +394,15 @@ class DrilldownMatrix(object):
                     found[idx] = True
                 if match_all_but(e, params, idx):
                     result[idx] = result[idx].union(e._data[idx])
+
+        if metric:
+            # Must match the y-axis of the specified metric
+            candidate_metrics = set()
+            yaxis = model.metrics()[metric].yaxis
+            for key, m in model.metrics():
+                if m.yaxis == yaxis:
+                    candidate_metrics.add(m.key().name())
+            result[0] = result[0].intersection(candidate_metrics)
 
         # If there were no matches for a given field, don't return anything.
         # This shouldn't happen if the queries are limited to the results
