@@ -16,7 +16,7 @@ use_library('django', '1.2')
 
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
-from google.appengine.ext.webapp import util
+from google.appengine.ext.webapp import util as webapp_util
 from google.appengine.ext import db
 from google.appengine.api import memcache
 from google.appengine.api import users
@@ -27,7 +27,6 @@ import hashlib
 import json
 import pickle
 import StringIO
-import urllib
 import logging
 
 # App libraries
@@ -35,6 +34,7 @@ from drilldown import drilldown
 from cache import cache_result, CachedDataView
 import curve_compare
 import model
+import util
 
 # We give metrics their own handler for convenience
 class ImportMetricHandler(webapp.RequestHandler):
@@ -242,13 +242,6 @@ class CodecMetricHandler(webapp.RequestHandler):
 
 @cache_result()
 def find_baseline(metric, config, filename, commits):
-    def field_list(field):
-        '''Returns the field as a list of strings.'''
-        result = urllib.unquote(field).split(",")
-        if len(result[0]) == 0:
-            return None
-        return result
-
     def find_first_parent(commit, data, candidates):
         while True:
             parents = data[commit].parents
@@ -265,7 +258,7 @@ def find_baseline(metric, config, filename, commits):
 
     candidates = drilldown.query(metric, config, filename, commits)[3]
     commit_data = model.commits()
-    commits = field_list(commits)
+    commits = util.field_list(commits)
     parentage = {}
     for commit in commits:
         parentage[commit] = []
@@ -331,24 +324,6 @@ def calculate_improvement(m, cfg, fs, cm, base_data, composite_fn):
 class AverageImprovementHandler(webapp.RequestHandler):
     def get(self, metrics, configs, filenames, commits):
         """Calculates the requested composite metrics and outputs as JSON"""
-        def field_list(field):
-            '''Returns the field as a list of strings.'''
-            result = urllib.unquote(field).split(",")
-            if len(result[0]) == 0:
-                return []
-            return result
-
-        def filename_list(field):
-            def generate(field):
-                if field:
-                    for fs in urllib.unquote(field).split(","):
-                        if fs[0] == "~":
-                            for f in model.filesets()[fs[1:]].files:
-                                yield f
-                        else:
-                            yield fs
-            return [x for x in generate(field)]
-
         # Find the baseline based on the raw URL variables
         parent = find_baseline(metrics, configs, filenames, commits)
         # We format the end of the table with extra info
@@ -360,10 +335,10 @@ class AverageImprovementHandler(webapp.RequestHandler):
         result = []
         commit_cache = model.commits()
 
-        metrics = field_list(metrics)
-        configs = field_list(configs)
-        filenames = filename_list(filenames)
-        commits = field_list(commits)
+        metrics = util.field_list(metrics)
+        configs = util.field_list(configs)
+        filenames = util.filename_list(filenames)
+        commits = util.field_list(commits)
         for m in metrics:
             if model.metrics()[m].distortion:
                 improvement = rd_improvement
@@ -421,7 +396,7 @@ def main():
         (r'/average-improvement/(.*)/(.*)/(.*)/(.*)', AverageImprovementHandler),
         ('/graph', ChartHandler)
     ], debug=True)
-    util.run_wsgi_app(application)
+    webapp_util.run_wsgi_app(application)
 
 
 if __name__ == '__main__':

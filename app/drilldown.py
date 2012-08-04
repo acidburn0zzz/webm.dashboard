@@ -16,14 +16,13 @@ use_library('django', '1.2')
 
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
-from google.appengine.ext.webapp import util
+from google.appengine.ext.webapp import util as webapp_util
 from google.appengine.ext import db
 from google.appengine.api import users
 
 import json
 import logging
 import re
-import urllib
 import time
 
 # Here is everything we need to format the output for the UI
@@ -32,6 +31,19 @@ from google.appengine.api import memcache
 from model import FileCache, MetricCache
 from gerrit import gerrit
 import model
+import util
+
+def _split_field(field):
+    result = util.field_list(field)
+    if not result:
+        return [None]
+    return result
+
+def _split_filename(field):
+    result = util.filename_list(field)
+    if not result:
+        return [None]
+    return result
 
 class DrilldownCommitCache(CachedDataView):
     def begin_getitem(self, commit):
@@ -415,29 +427,11 @@ class DrilldownMatrix(object):
         return result
 
     def query(self, metric, config, filename, commit):
-        def split_field(field):
-            if field:
-                for f in urllib.unquote(field).split(","):
-                    yield f
-            else:
-                yield None
-
-        def split_filename(field):
-            if field:
-                for fs in urllib.unquote(field).split(","):
-                    if fs[0] == "~":
-                        for f in model.filesets()[fs[1:]].files:
-                            yield f
-                    else:
-                        yield fs
-            else:
-                yield None
-
         result = None
-        for m in split_field(metric):
-            for cfg in split_field(config):
-                for f in split_filename(filename):
-                    for cm in split_field(commit):
+        for m in _split_field(metric):
+            for cfg in _split_field(config):
+                for f in _split_filename(filename):
+                    for cm in _split_field(commit):
                         if not result:
                             result = self.query_(m,cfg,f,cm)
                         else:
@@ -467,7 +461,7 @@ def main():
         (r'/drilldown/(.*)/(.*)/(.*)/(.*)', DrilldownQueryHandler),
         ('/drilldown/reset', DrilldownResetHandler),
     ], debug=True)
-    util.run_wsgi_app(application)
+    webapp_util.run_wsgi_app(application)
 
 
 if __name__ == '__main__':
