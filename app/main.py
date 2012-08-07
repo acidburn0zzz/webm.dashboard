@@ -375,6 +375,10 @@ class AverageImprovementHandler(webapp.RequestHandler):
                     result.append({'col': col_name,
                                    'data': col})
         # return the results
+        result = {'baseline': parent,
+                  'data': result,
+                  }
+        self.response.headers['Content-Type'] = 'application/json'
         self.response.out.write(pretty_json(result))
 
 class MainHandler(webapp.RequestHandler):

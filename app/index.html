@@ -53,7 +53,7 @@ function FetchMetric(metricurl, series_name, responses) {
   });
 }
 
-function ChartFiller() {
+function ChartFiller(baseline) {
   var dist_responses = new Array();
   var bar_responses = new Array();
 
@@ -83,7 +83,8 @@ function ChartFiller() {
 
   //var files = FileState.filter(removeParents);
   var files = FileTableState;
-  var commits = CommitState.filter(removeParents);
+  var commits = Array(baseline);
+  commits = commits.concat(CommitState.filter(removeParents));
 
   // Ew, quadruple nested loop
   for (var i = 0; i < MetricState.length; i++) {
@@ -101,7 +102,12 @@ function ChartFiller() {
           var file = files[k];
           var commit = commits[t];
           metricurl = "/metric-data/" + metric + "/" + config + "/" + file + "/" + commit
-          commit = commit.slice(0,9);
+
+          // pretty-up commit hash
+          if (t == 0)
+            commit = commit.slice(0,9) + " (Baseline)";
+          else
+            commit = commit.slice(0,9);
 
           // Build a more readable version of the series name
           var series_name = []
@@ -111,16 +117,18 @@ function ChartFiller() {
           if (ConfigState.length > 1) {
             series_name.push(config);
           }
-          if (series_name.length == 0 || files.length > 1) {
-            series_name.push(file);
-          }
 
           if (is_distortion(metric)) {
-            if (commits.length > 1)
-              series_name.push(commit)
+            if (files.length > 1) {
+              series_name.push(file);
+            }
+            series_name.push(commit);
             series_name = {label: series_name.join(" "), commit: commit};
             FetchMetric(metricurl, series_name, dist_responses);
           } else {
+            if (series_name.length == 0 || files.length > 1) {
+              series_name.push(file);
+            }
             series_name = {label: series_name.join(" "), commit: commit};
             FetchMetric(metricurl, series_name, bar_responses[t]);
           }
@@ -150,8 +158,7 @@ function StatisticFiller() {
     type: "GET",
     url: compurl,
     success: function(response){
-      response = eval(response);
-      if (response.length > 0) {
+      if (response.data.length > 0) {
         ImprovementTable(response);
       }
       else {
@@ -165,6 +172,9 @@ function StatisticFiller() {
 
 // ------------------------------------------------------------------------
 function ImprovementTable(data_in) {
+  var baseline = data_in.baseline
+  data_in = data_in.data
+
   numCol = data_in.length;
   var data1 = new google.visualization.DataTable();
   var view;
@@ -202,7 +212,7 @@ function ImprovementTable(data_in) {
 
   var commits = CommitState.filter(removeParents).join(",");
   $("#githistory").html("Loading...");
-  $("#githistory").load("/history/"+commits);
+  $("#githistory").load("/history/"+baseline+","+commits);
 
   $('#chartdiv').html("Please select a file (or files) to view graph.");
 
@@ -232,7 +242,7 @@ function ImprovementTable(data_in) {
       FileTableState.push(str);
     }
 
-    ChartFiller();
+    ChartFiller(baseline);
     if (selection.length == 0) {
       // We get rid of tables that are no longer relevant
       $('#chartdiv').html("Please select a file (or files) to view graph.");
