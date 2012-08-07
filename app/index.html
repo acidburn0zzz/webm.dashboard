@@ -153,6 +153,16 @@ function StatisticFiller() {
   var commits = CommitState.filter(removeParents).join(",");
   var compurl = "/average-improvement/" + metrics + "/" + configs + "/" + files + "/" + commits;
 
+  if ((MetricState.length * ConfigState.length *
+      FileState.filter(removeParents).length *
+      CommitState.filter(removeParents).length) == 0) {
+    $('#tabs11').html("Please select a valid run.");
+    $('#tabs2').html("");
+    $('#githistory').html("");
+    $('#chartdiv').html("");
+    return;
+  }
+
   // What baseline should the curves be compared to?
   $.ajax({
     type: "GET",
@@ -160,10 +170,6 @@ function StatisticFiller() {
     success: function(response){
       if (response.data.length > 0) {
         ImprovementTable(response);
-      }
-      else {
-        $('#tabs11').html("Please select a valid run.");
-        $('#githistory').html("");
       }
     },
   });
