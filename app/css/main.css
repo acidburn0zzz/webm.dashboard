@@ -59,11 +59,10 @@ body {
 #tabs11 {
   float: left
 }
-#tabs12 {
-  float: right
-}
-#chartdiv2 {
-  float: right
-}
 .clear { clear: both}
 
+#chartdiv {
+  float: right;
+  width: 1200;
+  height: 900;
+}

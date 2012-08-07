@@ -76,7 +76,6 @@ function ChartFiller() {
       drawChart2(bar_responses);
     }
     else {
-      $('#chartdiv2').html("");
       $('#tabs3').html("");
     }
 
@@ -86,13 +85,13 @@ function ChartFiller() {
   var files = FileTableState;
   var commits = CommitState.filter(removeParents);
 
-  // one series per commit
-  if (queryNum)
-    for (var t = 0; t < commits.length; t++)
-      bar_responses[t] = new Array();
-
   // Ew, quadruple nested loop
   for (var i = 0; i < MetricState.length; i++) {
+    // one series per commit
+    if (bar_responses.length == 0 && queryNum && !is_distortion(MetricState[i]))
+      for (var t = 0; t < commits.length; t++)
+        bar_responses[t] = new Array();
+
     for (var j = 0; j < ConfigState.length; j++) {
       for (var k = 0; k < files.length; k++) {
         for (var t = 0; t < commits.length; t++) {
@@ -233,7 +232,6 @@ function ImprovementTable(data_in) {
       // We get rid of tables that are no longer relevant
       $('#chartdiv').html("Please select a file (or files) to view graph.");
       $('#tabs2').html("");
-      $('#chartdiv2').html("");
       $('#tabs3').html("");
     }
   }
@@ -273,9 +271,7 @@ function drawChart(data_in) {
 
   // Set chart options
   var chartOptions = {title:'Rate Distortion Curves',
-                 width:800,
-                 height:600,
-                 chartArea: {left: 50, width: "55%"},
+                 chartArea: {left: 10, top: 10, height: "90%", width: "80%"},
                  vAxis: {title: data_in1.yaxis},
                  hAxis: {title: 'Bitrate'},
                  //vAxis: {title: 'y axis'},
@@ -351,14 +347,13 @@ function drawChart2(data_in) {
 
   // Set chart options
   var chartOptions = {title:'Performance',
-                 width:800,
-                 height:600,
+                 chartArea: {left: 10, top: 10, height: "90%", width: "80%"},
                  vAxis: {title: data_in[0][0].response.yaxis},
                 };
   var tableOptions = {width: 'automatic'};
 
   // Instantiate and draw our chart, passing in some options.
-  var chart2 = new google.visualization.CandlestickChart(document.getElementById("chartdiv2"));
+  var chart2 = new google.visualization.CandlestickChart(document.getElementById("chartdiv"));
   var table2 = new google.visualization.Table(document.getElementById("tabs2"));
   chart2.draw(view, chartOptions);
   table2.draw(view, tableOptions);
@@ -463,12 +458,10 @@ class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-arrowthick-2-n-s"></d
   </ul>
 
   <div id="tabs1" class="tabdiv">
-    <div id="tabs11"></div>
-    <div id="tabs12">
+    <div>
+      <div id="tabs11"></div>
       <div id="chartdiv"></div>
     </div>
-    <!--<div class="clear"></div>-->
-    <div id="chartdiv2"></div>
     <div class="clear"></div>
   </div>
   <div id="tabs2" class="tabdiv">

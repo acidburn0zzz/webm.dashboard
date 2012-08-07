@@ -260,7 +260,7 @@ function initTrees(){
 
     // We also clear out the appropriate tabs.
     $('#tabs11').html('Please select a valid run.');
-    $('#tabs12').html('');
+    $('#chartdiv').html('');
     $('#tabs2').html('');
     $('#tabs3').html('');
 
