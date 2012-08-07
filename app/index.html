@@ -156,6 +156,7 @@ function StatisticFiller() {
       }
       else {
         $('#tabs11').html("Please select a valid run.");
+        $('#githistory').html("");
       }
     },
   });
@@ -198,6 +199,10 @@ function ImprovementTable(data_in) {
 
   var table = new google.visualization.Table(document.getElementById("tabs11"));
   table.draw(view, tableOptions);
+
+  var commits = CommitState.filter(removeParents).join(",");
+  $("#githistory").html("Loading...");
+  $("#githistory").load("/history/"+commits);
 
   $('#chartdiv').html("Please select a file (or files) to view graph.");
 
@@ -463,6 +468,7 @@ class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-arrowthick-2-n-s"></d
       <div id="chartdiv"></div>
     </div>
     <div class="clear"></div>
+    <div class="ui-widget-content" id="githistory"></div>
   </div>
   <div id="tabs2" class="tabdiv">
   </div>

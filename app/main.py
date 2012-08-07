@@ -28,6 +28,7 @@ import json
 import pickle
 import StringIO
 import logging
+import re
 
 # App libraries
 from drilldown import drilldown
@@ -36,6 +37,9 @@ import curve_compare
 import model
 import util
 
+GERRIT_LINK_HTML=("<a href=\"https://gerrit.chromium.org/gerrit/"
+                  "#q,%s,n,z\">%s</a>")
+GERRIT_LINK_PATTERN="(I[a-f0-9]{40})"
 # We give metrics their own handler for convenience
 class ImportMetricHandler(webapp.RequestHandler):
     def post(self):
@@ -386,12 +390,90 @@ class ChartHandler(webapp.RequestHandler):
     def get(self):
         self.response.out.write(template.render("graph.html", {}))
 
+class HistoryHandler(webapp.RequestHandler):
+    def build_history(self, commit, visited=set()):
+        to_visit = [commit]
+        history = []
+        while(to_visit):
+            commit = to_visit.pop()
+            if commit not in visited:
+                visited.add(commit)
+                history.insert(0, commit)
+                commit = model.commits()[commit]
+                to_visit.extend(commit.parents)
+        return history
+
+    def initial_visited(self, c1):
+        visited=set()
+        while c1:
+            c1 = model.commits()[c1]
+            visited.update(c1.parents)
+            if c1.parents:
+                c1 = c1.parents[0]
+            else:
+                break
+        return visited
+
+    def get(self, commits):
+        def gerrit_link(m):
+            return GERRIT_LINK_HTML%(m.group(0), m.group(0))
+
+        def commit_group(commits, rollup):
+            return {'commits': commits, 'count': len(commits),
+                    'rollup': rollup, 'id': commits[0]['commit']}
+
+        commits = util.field_list(commits)
+
+        # Find the oldest commit
+        visited = set(commits[:1])
+        for commit in commits:
+            if commit in visited:
+                visited = self.initial_visited(commit)
+
+        history = [self.build_history(c, set(visited)) for c in commits]
+        #self.response.out.write("\n".join(map(str, history)))
+
+        history = sorted(history, key=lambda x:len(x))
+        collapsed_history = history[0]
+        collapsed_history_set = set(collapsed_history)
+        for h in history[1:]:
+            for c in h:
+                if c not in collapsed_history_set:
+                    collapsed_history_set.add(c)
+                    collapsed_history.append(c)
+
+        formatted = []
+        rollup = []
+        for commit in collapsed_history:
+            commit_data = model.commits()[commit]
+            message = commit_data.message.split("\n")
+            nonempty_lines = sum(map(bool, message))
+            data = {'commit': commit_data.key().name()[:9],
+                    'author': commit_data.author,
+                    'subject': message[0],
+                    'body': message[1:],
+                    'selected': False,
+                    'expandable': nonempty_lines > 1}
+            if commit in commits:
+                if rollup:
+                    formatted.append(commit_group(rollup, rollup=True))
+                    rollup = []
+                data['selected'] = True
+                formatted.append(commit_group([data], rollup=False))
+            else:
+                rollup.append(data)
+
+        html = template.render("history.html", {"commit_groups": formatted})
+        html = re.sub(GERRIT_LINK_PATTERN, gerrit_link, html)
+        self.response.out.write(html)
+
 def main():
     application = webapp.WSGIApplication([
         ('/', MainHandler),
         ('/import-metrics', ImportMetricHandler),
         ('/import-filesets', ImportFileSetHandler),
         ('/import-codec-metrics', ImportCodecMetricHandler),
+        (r'/history/(.*)', HistoryHandler),
         (r'/metric-data/(.*)/(.*)/(.*)/(.*)', CodecMetricHandler),
         (r'/average-improvement/(.*)/(.*)/(.*)/(.*)', AverageImprovementHandler),
         ('/graph', ChartHandler)
