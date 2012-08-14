@@ -39,7 +39,7 @@ function treeConfig(TreeModel) {
 // We sort the commits in reverse chronological order
 function commitTreeConfig(TreeModel) {
   return $.extend(treeConfig(TreeModel), {
-    "plugins" : ["themes", "json_data", "ui", "checkbox", "sort", "contextmenu"],
+    "plugins" : ["themes", "json_data", "ui", "checkbox", "sort", "contextmenu", "types"],
     "sort": function (a, b) {
       return $(a).attr("date") < $(b).attr("date") ? 1 : -1;
     },
@@ -73,6 +73,14 @@ function commitTreeConfig(TreeModel) {
             //"_disabled" : ($node).attr("id")[0] === "_" ? true : false,
             "_disabled" : false,
           },
+        }
+      }
+    },
+    "types":{
+      "types":{
+        "parentNode" : {
+          "check_node" : false,
+          "uncheck_node" : false
         }
       }
     }
@@ -142,8 +150,10 @@ function initTree(divName, ContentsList, StateList){
 
   $(divName).bind("select_node.jstree", function (event, data) {
     // `data.rslt.obj` is the jquery extended node that was clicked
-    data.inst.change_state(data.rslt.obj);
-    $(divName).trigger('change_state.jstree', data);
+    if (typeof data.rslt.obj.attr("rel") === "undefined") {
+      data.inst.change_state(data.rslt.obj);
+      $(divName).trigger('change_state.jstree', data);
+    }
   });
 
   // The code to recognize a state change - when a checkbox changes

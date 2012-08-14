@@ -114,6 +114,10 @@ class JSTreeNode(object):
         result = {"attr": self._attr, "data": self._data}
         if self._children:
             result["children"] = [x.dump() for x in self._children]
+
+            # We do not want check boxes on parent nodes
+            result["attr"]["rel"] = "parentNode"
+
         return result
 
     def add_child(self, child):
