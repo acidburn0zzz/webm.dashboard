@@ -292,7 +292,8 @@ function drawChart(data_in) {
 
   // Set chart options
   var chartOptions = {title:'Rate Distortion Curves',
-                 chartArea: {left: 10, top: 10, height: "90%", width: "80%"},
+                 //chartArea: {right: 20, bottom: 10, height: "90%", width: "70%"},
+                 chartArea: {height: "90%", width: "70%"},
                  vAxis: {title: data_in1.yaxis},
                  hAxis: {title: 'Bitrate'},
                  //vAxis: {title: 'y axis'},
@@ -368,7 +369,7 @@ function drawChart2(data_in) {
 
   // Set chart options
   var chartOptions = {title:'Performance',
-                 chartArea: {left: 10, top: 10, height: "90%", width: "80%"},
+                 chartArea: {height: "90%", width: "70%"},
                  vAxis: {title: data_in[0][0].response.yaxis},
                 };
   var tableOptions = {width: 'automatic'};
