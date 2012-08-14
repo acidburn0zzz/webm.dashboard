@@ -44,7 +44,7 @@ border: 1px solid #aaa;
 
 body {
   font-family: verdana;
-  min-width: 700px;
+  min-width: 900px;
 }
 
 .bold-font {
@@ -127,15 +127,29 @@ h3 {
   width:100%;
 }
 #tabs11 {
-  float: left
+  float: left;
+  margin-bottom:10px;
 }
 .clear { clear: both}
 
-#chartdiv {
-  float: right;
-  width: 1200;
-  height: 900;
+#container {
+    display: inline-block;
+    position: relative;
+    width: 70%;
+    margin-left:10px;
+    margin-bottom:10px;
 }
+#dummy {
+    margin-top: 50%; /* 4:3 aspect ratio */
+}
+#chartdiv {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
 
 /* Hide the border when this widget is empty */
 #githistory:empty{
