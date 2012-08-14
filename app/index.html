@@ -392,6 +392,7 @@ $(function() {
     }
   });
   $("#helpdialog").dialog({ autoOpen: false });
+  $("#helpbutton").bind('click', help);
 });
 
 function help() {
@@ -404,29 +405,38 @@ function help() {
 <!-- ----------------------------------------------------------------------- -->
 </head>
 <body>
-<p align="right">
+<div id="header">
+
+<div id="headerLeft">
+WebM Dashboard
+</div>
+
+<div id="headerRight">
+
+<div align="right" style="display:table-cell; vertical-align: middle;">
 {% if user %}
-Welcome, {{ user.nickname }}! (<a href="{{ logout_url }}">Sign Out</a>)
+Welcome, {{ user.nickname }}! <a href="{{ logout_url }}">Sign Out</a>
 {% else %}
 <a href="{{ login_url }}">Sign In</a>
 {% endif %}
-</p>
-
-<div id ="main"> <!-- This div exists to test some Jquery binding things -->
-<h1>WebM Development Dashboard</h1>
-
-<!-- A button to clear out all trees -->
-<div id="resetbutton">
-<input type="button" value="Reset" />
 </div>
-
+&nbsp;|&nbsp;
+<!-- A button to clear out all trees -->
+<div id="resetbutton" style="display:table-cell; vertical-align: middle;">
+Reset
+</div>
+&nbsp;|&nbsp;
 <div id="helpdialog" title="About this page">
 	<p>To view a graph of performance data, please select some metrics, configurations, filesets and patch sets. The page will automatically update to reflect what data is available. </p>
 </div>
-
-<div id="helpbutton">
-<input type="button" value="Help" onclick="help()"/>
+<div id="helpbutton" style="display:table-cell;	vertical-align: middle;">
+Help
 </div>
+
+
+</div>
+
+</div><!-- End of header -->
 
 <!-- Where the jstrees go -->
 <div id="topcenter" class="ui-widget-content ui-resizable">
@@ -444,7 +454,7 @@ class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-arrowthick-2-n-s"></d
 </div>
 
 <div id="topcolumnsm">
-  <h3>Configurations</h3>
+  <h3>Configs</h3>
   <div id="treeHolder">
   <div id="treeView2">
   </div>
@@ -497,6 +507,5 @@ class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-arrowthick-2-n-s"></d
 </div> <!-- end of bottom center -->
 
 
-</div> <!-- end of main -->
 </body>
 </html>
