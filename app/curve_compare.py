@@ -5,7 +5,7 @@ def HasMetrics(line):
     return True
   return False
 
-def DataBetter(metric_set1_sorted, metric_set2_sorted):
+def DataBetter(baseline_sorted, other_sorted):
   """
   Compares two data sets and determines which is better and by how
   much. Also produces a histogram of how much better, by PSNR.
@@ -34,7 +34,7 @@ def DataBetter(metric_set1_sorted, metric_set2_sorted):
         s2_metric_1 = pair1[1]
 
         # We have a point on either side of our metric range.
-        if metric > s2_metric_0 and metric <= s2_metric_1:
+        if metric >= s2_metric_0 and metric <= s2_metric_1:
 
           # Calculate a slope.
           if s2_metric_1 - s2_metric_0 != 0:
@@ -69,12 +69,12 @@ def DataBetter(metric_set1_sorted, metric_set2_sorted):
     return avg
 
   # If one of the curves is not specified
-  if metric_set1_sorted is None or metric_set2_sorted is None:
+  if baseline_sorted is None or other_sorted is None:
     return None
 
   # Be fair to both graphs by testing all the points in each.
-  avg_improvement = (GraphBetter(metric_set1_sorted, metric_set2_sorted, 1) -
-                     GraphBetter(metric_set2_sorted, metric_set1_sorted, 0)) / 2
+  avg_improvement = (GraphBetter(baseline_sorted, other_sorted, 0) -
+                     GraphBetter(other_sorted, baseline_sorted, 1)) / 2
 
 
   return avg_improvement
