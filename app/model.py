@@ -18,6 +18,7 @@ use_library('django', '1.2')
 
 from google.appengine.ext import db
 from cache import CachedDataView
+import datetime
 import pickle
 
 class Metric(db.Model):
@@ -52,6 +53,17 @@ class FileCache(CachedDataView):
         key = db.Key.from_path('File', filename)
         return db.get_async(key)
 
+def reset_files_cache():
+    global _files_cache
+
+    _files_cache = FileCache([k.name() for k in File.all(keys_only = True)])
+
+def files():
+    return _files_cache
+
+reset_files_cache()
+
+
 class FileSet(db.Model):
     # key_name is the file set name
     display_name = db.StringProperty()
@@ -81,6 +93,7 @@ class Commit(db.Model):
     message = db.TextProperty()
     branches = db.StringListProperty()
     parents = db.StringListProperty()
+    depth = db.IntegerProperty()
     gerrit_change_id = db.StringProperty()
     gerrit_change_num = db.IntegerProperty()
     gerrit_url = db.StringProperty()
@@ -138,6 +151,15 @@ class CodecMetric(db.Model):
     runtime_flags = db.StringProperty()
     config_name = db.StringProperty()
     data = DictProperty()
+
+class CodecMetricTimeSeries(db.Model):
+    metric = db.StringProperty()
+    config_name = db.StringProperty()
+    file_or_set_name = db.StringProperty()
+    branch = db.StringProperty()
+    commits = db.StringListProperty()
+    times = db.ListProperty(datetime.datetime)
+    values = db.ListProperty(float)
 
 class CodecMetricIndex(db.Model):
     # parent = CodecMetric

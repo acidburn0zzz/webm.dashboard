@@ -115,7 +115,7 @@ class ImportCommitHandler(webapp.RequestHandler):
                 return datetime.timedelta(seconds=self.offset)
         return datetime.datetime.fromtimestamp(time, GitTZInfo(zone))
 
-    def load(self, data):
+    def load_commit(self, data):
       author_time = self.convert_time(data["author_time"],
                                       data["author_timezone"])
       commit_time = self.convert_time(data["commit_time"],
@@ -143,14 +143,53 @@ class ImportCommitHandler(webapp.RequestHandler):
                        parents=data["parents"],
                        **gerrit_data)
       c.put()
+      return data["id"]
+
+    def update_depth(self, commits):
+      to_visit = list(commits)
+      commits = model.commits()
+      while(to_visit):
+        commit = to_visit.pop()
+        #if commit is None:
+        #  continue
+
+        c = commits[commit]
+        if c.depth is not None:
+          continue
+
+        again = False
+        depth = 0
+        for parent in [commits[x] for x in commits[commit].parents]:
+          if parent.depth:
+            depth = max(depth, parent.depth)
+          else:
+            if not again:
+              to_visit.append(commit)
+              again = True
+            to_visit.append(parent.key().name())
+
+        if not again:
+          c.depth = depth + 1
+          c.put()
+          logging.info("update_depth: %s depth %d"%(commit, c.depth))
+
+
+    def load(self, data):
+      if "id" in data:
+        return self.load_commit(data)
+      elif "branch" in data:
+        return self.load_branch()
 
     def post(self):
         gerrit.poll()
         data = StringIO.StringIO(self.request.get("data"))
+        new_commits = []
         for line in data:
-            self.load(json.loads(line))
+            new_commits.append(self.load(json.loads(line)))
         memcache.flush_all()
         model.reset_commit_cache()
+
+        self.update_depth(new_commits)
 
 
 def main():

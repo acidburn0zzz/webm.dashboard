@@ -22,6 +22,9 @@ handlers:
 - url: /gerrit/.*
   script: gerrit.py
 
+- url : /analysis/.*
+  script: analysis.py
+
 - url: .*
   script: main.py
 

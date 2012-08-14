@@ -86,7 +86,11 @@ function ChartFiller(baseline) {
 
   //var files = FileState.filter(removeParents);
   var files = FileTableState;
-  var commits = Array(baseline);
+
+  // Add the baseline to the list of commits, if one is set
+  var commits = Array();
+  if (baseline)
+    commits.push(baseline);
   commits = commits.concat(CommitState.filter(removeParents));
 
   // Ew, quadruple nested loop
@@ -107,7 +111,7 @@ function ChartFiller(baseline) {
           metricurl = "/metric-data/" + metric + "/" + config + "/" + file + "/" + commit
 
           // pretty-up commit hash
-          if (t == 0)
+          if (baseline && t == 0)
             commit = commit.slice(0,9) + " (Baseline)";
           else
             commit = commit.slice(0,9);

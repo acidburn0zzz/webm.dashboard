@@ -27,6 +27,7 @@ import hashlib
 from django.utils import simplejson as json
 import pickle
 import StringIO
+import urllib
 import logging
 import re
 
@@ -229,16 +230,43 @@ def fetch_metric_for_fileset(metric, config, files, commit):
         results_by_file[filename] = sorted(result, key=lambda x:x[0])
     return results_by_file
 
+def fetch_time_series(metric, config, files, commit):
+    branch = commit[1:]
+    q = model.CodecMetricTimeSeries.all()
+    q = q.filter('metric =', metric)
+    q = q.filter('config_name =', config)
+    q = q.filter('branch =', branch)
+    result = {}
+    for data in q:
+        if data.file_or_set_name in files:
+            result[data.file_or_set_name] = zip(
+                range(len(data.times)),
+                [(x-1.0)*100.0 for x in data.values])
+    return result
+
 class CodecMetricHandler(webapp.RequestHandler):
     def get(self, metric, config, filename, commit):
         """Fetches the requested metric data as JSON"""
+        if not metric or not config or not filename or not commit:
+            self.error(404)
+            return
 
-        result = {'yaxis': model.metrics()[metric].yaxis,
-                  'data': fetch_codec_metric(metric, config, filename, commit),
-                  }
+        filename = urllib.unquote(filename)
+        commit = urllib.unquote(commit)
+
+        if commit[0] == "~":
+            result = {'yaxis': "Percent Improvement",
+                      'data': fetch_time_series(metric, config, filename,
+                                                commit)[filename],
+                     }
+        else:
+            result = {'yaxis': model.metrics()[metric].yaxis,
+                      'data': fetch_codec_metric(metric, config, filename,
+                                                 commit),
+                      }
 
         # Return the result
-        if result:
+        if result['data']:
             self.response.headers['Content-Type'] = 'application/json'
             self.response.out.write(pretty_json(result))
         else:
@@ -326,7 +354,7 @@ def calculate_improvement(m, cfg, fs, cm, base_data, composite_fn):
     return None, result
 
 class AverageImprovementHandler(webapp.RequestHandler):
-    def get(self, metrics, configs, filenames, commits):
+    def get_adhoc_improvement(self, metrics, configs, filenames, commits):
         """Calculates the requested composite metrics and outputs as JSON"""
         # Find the baseline based on the raw URL variables
         parent = find_baseline(metrics, configs, filenames, commits)
@@ -381,6 +409,54 @@ class AverageImprovementHandler(webapp.RequestHandler):
         self.response.headers['Content-Type'] = 'application/json'
         self.response.out.write(pretty_json(result))
 
+    def get_time_series(self, metrics, configs, filenames, commits):
+        metrics = util.field_list(metrics)
+        configs = util.field_list(configs)
+        filesets = util.field_list(filenames)
+        branches = util.field_list(commits)
+        result = []
+        for m in metrics:
+            for c in configs:
+                for f in filesets:
+                    for b in branches:
+                        # Get all the data for all files in the set
+                        files_and_set = util.filename_list(f)
+                        files_and_set.append(f)
+                        data = fetch_time_series(m, c, files_and_set, b)
+
+                        # Build the column name
+                        col_name = []
+                        if len(metrics) > 1:
+                            col_name.append(m)
+                        if len(configs) > 1:
+                            col_name.append(c)
+                        if len(filesets) > 1:
+                            col_name.append(f)
+                        if len(col_name) == 0 or len(branches) > 1:
+                            col_name.append(b[1:])
+                        col_name = "/".join(col_name)
+
+                        # Build the rows for this column
+                        col = []
+                        for filename, filedata in data.iteritems():
+                            improvement = filedata[-1][1]
+                            col.append([filename, improvement])
+
+                        result.append({'col': col_name,
+                                       'data': col})
+
+        # return the results
+        result = {'data': result,
+                  }
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.out.write(pretty_json(result))
+
+    def get(self, metrics, configs, filenames, commits):
+        if urllib.unquote(commits)[0] == "~":
+            self.get_time_series(metrics, configs, filenames, commits)
+        else:
+            self.get_adhoc_improvement(metrics, configs, filenames, commits)
+
 class MainHandler(webapp.RequestHandler):
     def get(self):
         values = {
@@ -427,6 +503,10 @@ class HistoryHandler(webapp.RequestHandler):
                     'rollup': rollup, 'id': commits[0]['commit']}
 
         commits = util.field_list(commits)
+        # Don't print history for the whole branch
+        for commit in commits:
+            if commit[0] == '~':
+                return
 
         # Find the oldest commit
         visited = set(commits[:1])

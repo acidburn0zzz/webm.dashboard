@@ -52,17 +52,17 @@ class DrilldownCommitCache(CachedDataView):
 
     def getitem(self, commit, rpc):
         commitdata = rpc.get_result()
-
-        subject = commitdata.message.split("\n")[0]
-        changeid = re.search(r'Change-Id: ([I0-9a-f]+)', commitdata.message)
-        if changeid:
-            subject = "%s: %s"%(changeid.group(1)[:9], subject)
-        commitdata = {"displayname": "Patch Set %s (%s)"%(
-                          commitdata.gerrit_patchset_num, commit[:8]),
-                     "commitSet" : subject,
-                     "parents" : commitdata.parents,
-                     "date" : commitdata.commit_time,
-                     "author" : commitdata.author }
+        if commitdata:
+            subject = commitdata.message.split("\n")[0]
+            changeid = re.search(r'Change-Id: ([I0-9a-f]+)', commitdata.message)
+            if changeid:
+                subject = "%s: %s"%(changeid.group(1)[:9], subject)
+            commitdata = {"displayname": "Patch Set %s (%s)"%(
+                              commitdata.gerrit_patchset_num, commit[:8]),
+                         "commitSet" : subject,
+                         "parents" : commitdata.parents,
+                         "date" : commitdata.commit_time,
+                         "author" : commitdata.author }
         return commitdata
 
 @cache_result()
@@ -80,13 +80,13 @@ def metric_tree_formatter(metric_cache):
 def file_tree_formatter(file_cache):
     filesets = {}
     for filename, filedata in file_cache:
+        if filename[0] == "~":
+            continue
         for fileset in filedata.file_sets:
-            if fileset in filesets:
-                filesets[fileset].append({"attr": {"id": filename},
-                                          "data":filedata.display_name})
-            else:
-                filesets[fileset] = [{"attr": {"id": filename},
-                                      "data":filedata.display_name}]
+            f = filesets.setdefault(fileset, [])
+            f.append({"attr": {"id": filename},
+                      "data":filedata.display_name})
+
     formatted = []
     for fileset in filesets:
         #formatted.append({"data":fileset, "children":filesets[fileset],
@@ -134,6 +134,10 @@ def commit_tree_formatter(commit_cache):
         email = user.email()
 
     for patch, patchdata in commit_cache:
+        if not patchdata:
+            # TODO(jkoleszar): handle branch entries
+            logging.info("No commit data found for %s"%patch)
+            continue
         # We convert the time also to ms for comparison (in sorting)
         prettydate = "%s" %(patchdata["date"])
         ms = time.mktime(patchdata["date"].utctimetuple())
@@ -150,7 +154,7 @@ def commit_tree_formatter(commit_cache):
 
         # Find a parent for the node
         if patch in gerrit:
-            logging.info("building gerrit nodes for patch %s"%patch)
+            logging.debug("building gerrit nodes for patch %s"%patch)
             patchset = gerrit[patch]
             changeid = patchset['Change-Id']
             change = gerrit[changeid]
@@ -161,7 +165,7 @@ def commit_tree_formatter(commit_cache):
 
             # Add the patch to the change node
             if changeid not in change_nodes:
-                logging.info("built change node %s"%changeid)
+                logging.debug("built change node %s"%changeid)
                 change_node = JSTreeNode(change['subject'])
                 change_node.id = changeid
                 change_node.date = date
@@ -174,8 +178,10 @@ def commit_tree_formatter(commit_cache):
             # Add the change to the branch node
             branch = change['branch']
             if branch not in branch_nodes:
-                logging.info("built branch node %s"%branch)
+                logging.debug("built branch node %s"%branch)
                 branch_node = JSTreeNode(branch)
+                branch_node.checkable = True
+                branch_node.id = "~"+branch
                 branch_open_node = JSTreeNode("open")
                 branch_closed_node = JSTreeNode("closed")
                 branch_mine_node = JSTreeNode("mine")
