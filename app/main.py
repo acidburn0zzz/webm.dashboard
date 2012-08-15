@@ -24,7 +24,7 @@ from google.appengine.api import users
 # Standard libraries
 import datetime
 import hashlib
-import json
+from django.utils import simplejson as json
 import pickle
 import StringIO
 import logging

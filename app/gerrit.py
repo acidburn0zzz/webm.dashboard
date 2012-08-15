@@ -22,7 +22,7 @@ from google.appengine.api import urlfetch
 from google.appengine.api import memcache
 
 import datetime
-import json
+from django.utils import simplejson as json
 import logging
 import StringIO
 

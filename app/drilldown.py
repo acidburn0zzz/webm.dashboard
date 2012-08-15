@@ -20,7 +20,7 @@ from google.appengine.ext.webapp import util as webapp_util
 from google.appengine.ext import db
 from google.appengine.api import users
 
-import json
+from django.utils import simplejson as json
 import logging
 import re
 import time

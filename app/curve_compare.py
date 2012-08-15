@@ -1,5 +1,4 @@
 # This file compares two curves
-import json
 
 def HasMetrics(line):
   if line[0:1] != "B":
