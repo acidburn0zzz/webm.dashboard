@@ -61,6 +61,9 @@ function ChartFiller(baseline) {
                  FileTableState.length * CommitState.length;
   //$('#tabs3').html(queryNum);
 
+  // A loading image
+  $('#chartdiv').html("<img src='/images/ajax-loader.gif' alt='Loading...' style='display:block; margin:auto;'>");
+
   // Wait until all data is fetched to generate graphs
   $(document).ajaxStop(function() {
     $(this).unbind("ajaxStop");
@@ -162,6 +165,9 @@ function StatisticFiller() {
     $('#chartdiv').html("");
     return;
   }
+
+  $('#tabs11').html("Loading...");
+  $('#chartdiv').html("");
 
   // What baseline should the curves be compared to?
   $.ajax({
