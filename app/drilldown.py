@@ -104,6 +104,7 @@ class JSTreeNode(object):
         self._attr = {}
         self._data = data
         self._children = []
+        self.checkable = False
 
     def __setattr__(self, key, value):
         if key[0] != "_":
@@ -115,8 +116,8 @@ class JSTreeNode(object):
         if self._children:
             result["children"] = [x.dump() for x in self._children]
 
-            # We do not want check boxes on parent nodes
-            result["attr"]["rel"] = "parentNode"
+        if not (self.checkable):
+            result["attr"]["rel"] = "noBox"
 
         return result
 
@@ -145,6 +146,7 @@ def commit_tree_formatter(commit_cache):
         patch_node.date = date
         patch_node.prettydate = prettydate
         patch_node.author = patchdata["author"]
+        patch_node.checkable = True # A checkbox is needed
 
         # Find a parent for the node
         if patch in gerrit:

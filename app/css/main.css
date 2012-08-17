@@ -1,6 +1,6 @@
 /* This hides unselectable checkboxes in the commit tree */
 /* Note: display:none was not working for some reason beyond my understanding */
-[rel=parentNode] > a > .jstree-checkbox {
+[rel=noBox] > a > .jstree-checkbox {
   visibility:hidden;
   width:0%;
   height:0%;

@@ -78,7 +78,7 @@ function commitTreeConfig(TreeModel) {
     },
     "types":{
       "types":{
-        "parentNode" : {
+        "noBox" : {
           "check_node" : false,
           "uncheck_node" : false
         }
