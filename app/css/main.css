@@ -78,8 +78,9 @@ body {
   margin-right:15px;
   color: #fff;
 }
+
 #headerRight a:link {
-  color: #0000FF;
+  color: #ddd;
   text-decoration: none;
 }
 #headerRight a:visited {

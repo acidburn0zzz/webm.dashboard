@@ -401,7 +401,7 @@ $(function() {
       $(this).css("width", '');
     }
   });
-  $("#helpdialog").dialog({ autoOpen: false });
+  $("#helpdialog").dialog({ autoOpen: false, width: 800 });
   $("#helpbutton").bind('click', help);
 });
 
@@ -432,16 +432,23 @@ Welcome, {{ user.nickname }}! <a href="{{ logout_url }}">Sign Out</a>
 </div>
 &nbsp;|&nbsp;
 <!-- A button to clear out all trees -->
-<div id="resetbutton" style="display:table-cell; vertical-align: middle;">
+<a href="#null" id="resetbutton" style="display:table-cell; vertical-align: middle;">
 Reset
-</div>
+</a>
 &nbsp;|&nbsp;
 <div id="helpdialog" title="About this page">
-	<p>To view a graph of performance data, please select some metrics, configurations, filesets and patch sets. The page will automatically update to reflect what data is available. </p>
+<ul>
+<li>To view a graph of performance data, please select some metrics, configurations, filesets and patch sets. </li>
+<li> The page will automatically update to reflect what data is available.</li>
+<li> Then in the area below, pick a filename to view the graph.</li>
+<li> Multiple filenames can be selected with the ctrl or shift keys.</li>
+<li>The raw data for a graph is viewable in the "Table" tab.</li>
+<li>The reset button unchecks all selected options. </li>
+</ul>
 </div>
-<div id="helpbutton" style="display:table-cell;	vertical-align: middle;">
+<a href="#null" id="helpbutton" style="display:table-cell;	vertical-align: middle;">
 Help
-</div>
+</a>
 
 
 </div>
@@ -496,7 +503,7 @@ class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-arrowthick-2-n-s"></d
   <ul class="tabnav">
     <li><a href="#tabs1">Graph</a></li>
     <li><a href="#tabs2">Table</a></li>
-    <li><a href="#tabs3">Notes</a></li>
+    <!-- <li><a href="#tabs3">Notes</a></li> --->
   </ul>
 
   <div id="tabs1" class="tabdiv">
@@ -515,7 +522,6 @@ class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-arrowthick-2-n-s"></d
   <div id="tabs2" class="tabdiv">
   </div>
   <div id="tabs3" class="tabdiv">
-    <p>Lorem ipsum etc.</p>
   </div>
 
 </div> <!-- end of tabs -->
