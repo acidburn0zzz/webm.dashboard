@@ -126,6 +126,7 @@ h3 {
 #bottomcenter {
   float:left;
   width:100%;
+  margin-bottom:5px;
 }
 #tabs11 {
   float: left;
@@ -155,4 +156,27 @@ h3 {
 /* Hide the border when this widget is empty */
 #githistory:empty{
     display:none
+}
+
+#footer {
+  height: 20px;
+  background: #bbb;
+  width: 100%;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+  margin-bottom:5px;
+  font-size: small;
+  color:#fff;
+  text-align:center;
+}
+#footer a:link {
+  color: #eee;
+  text-decoration: none;
+}
+#footer a:visited {
+  color: #eee;
+}
+#footer a:hover {
+  color: #fff;
 }
