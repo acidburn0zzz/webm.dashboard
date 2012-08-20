@@ -98,6 +98,12 @@ function ChartFiller(baseline) {
 
     for (var j = 0; j < ConfigState.length; j++) {
       for (var k = 0; k < files.length; k++) {
+        if (files[k].slice(0, 8) === 'OVERALL:') {
+          if (queryNum == 1)
+            $('#chartdiv').html("Please select a file (or files) to view graph.");
+          continue;
+        }
+
         for (var t = 0; t < commits.length; t++) {
           // We put together a url
           var metric = MetricState[i];
@@ -195,11 +201,15 @@ function ImprovementTable(data_in) {
   var formatter = new google.visualization.NumberFormat(
       {suffix: '%', fractionDigits: 3});
 
+  var formatter2 = new google.visualization.TableColorFormat();
+  formatter2.addRange("OVERALL", "OVERALM", '#999');
+
   // We fill our table
   data1.addColumn('string', 'Filename');
   data1.addColumn('number', data_in[0].col);
   data1.addRows(data_in[0].data);
   formatter.format(data1, 1);
+  formatter2.format(data1, 0);
 
   // Make it a chart
   view = new google.visualization.DataView(data1);
@@ -210,6 +220,7 @@ function ImprovementTable(data_in) {
     data2.addColumn('number',  data_in[i].col);
     data2.addRows(data_in[i].data);
     formatter.format(data2, 1);
+    formatter2.format(data1, 0);
 
     // A list of numbers from 1 to i
     leftColumns = range(1, i);
@@ -217,7 +228,7 @@ function ImprovementTable(data_in) {
     // Join the two tables into one view
     view = new google.visualization.data.join(view, data2, 'full', [[0,0]], leftColumns, [1]);
   }
-  var tableOptions = {width: 'automatic'};
+  var tableOptions = {width: 'automatic', allowHtml: 'true'};
 
   var table = new google.visualization.Table(document.getElementById("tabs11"));
   table.draw(view, tableOptions);
