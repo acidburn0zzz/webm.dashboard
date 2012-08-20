@@ -237,6 +237,7 @@ function ImprovementTable(data_in) {
   $("#githistory").html("Loading...");
   $("#githistory").load("/history/"+baseline+","+commits);
 
+  $('#container').show();
   $('#chartdiv').html("Please select a file (or files) to view graph.");
 
   // We add some bindings to allow for selecting rows of the table
@@ -420,6 +421,19 @@ $(function() {
   });
   $("#helpdialog").dialog({ autoOpen: false, width: 800 });
   $("#helpbutton").bind('click', help);
+
+  $('#container').hide();
+
+  // This hides the whitespace used for storing the chart
+  $(document).click(function() {
+    if ($('#chartdiv').is(':empty')){
+      $('#container').hide();
+    }
+    else {
+      $('#container').show();
+    }
+  });
+
 });
 
 function help() {
