@@ -371,6 +371,13 @@ class AverageImprovementHandler(webapp.RequestHandler):
         configs = util.field_list(configs)
         filenames = util.filename_list(filenames)
         commits = util.field_list(commits)
+
+        # Fix for the case that a commit in commits has no parent
+        # In this case we choose the oldest commit as the parent, ie the one
+        # without a parent.
+        if not parent:
+            parent = commits[-1]
+
         for m in metrics:
             if model.metrics()[m].distortion:
                 improvement = rd_improvement
