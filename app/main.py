@@ -242,6 +242,7 @@ def fetch_time_series(metric, config, files, commit):
             result[data.file_or_set_name] = zip(
                 [(x.year, x.month, x.day, x.hour, x.minute, x.second)
                     for x in data.times],
+                data.commits,
                 [(x-1.0)*100.0 for x in data.values])
     return result
 
@@ -413,6 +414,7 @@ class AverageImprovementHandler(webapp.RequestHandler):
         # return the results
         result = {'baseline': parent,
                   'data': result,
+                  'commits': ','.join(commits)
                   }
         self.response.headers['Content-Type'] = 'application/json'
         self.response.out.write(pretty_json(result))
@@ -431,6 +433,16 @@ class AverageImprovementHandler(webapp.RequestHandler):
                         files_and_set = util.filename_list(f)
                         files_and_set.append(f)
                         data = fetch_time_series(m, c, files_and_set, b)
+
+                        # Remove unnecessary commit info
+                        formatted_data = {}
+                        for key in data:
+                            data_list = data[key]
+                            formatted_data_list = []
+                            for e in data_list:
+                                formatted_data_list.append([e[0], e[2]])
+                            formatted_data[key] = formatted_data_list
+                        data = formatted_data
 
                         # Build the column name
                         col_name = []
@@ -455,6 +467,7 @@ class AverageImprovementHandler(webapp.RequestHandler):
 
         # return the results
         result = {'data': result,
+                  'commits': ','.join(branches)
                   }
         self.response.headers['Content-Type'] = 'application/json'
         self.response.out.write(pretty_json(result))
@@ -477,6 +490,45 @@ class MainHandler(webapp.RequestHandler):
 class ChartHandler(webapp.RequestHandler):
     def get(self):
         self.response.out.write(template.render("graph.html", {}))
+
+class CommitInfoHandler(webapp.RequestHandler):
+    '''This hander is used to get all the information regarding a set of
+    commits and their baseline commit.'''
+    def get(self, commits, baseline):
+        def gerrit_link(m):
+            return GERRIT_LINK_HTML%(m.group(0), m.group(0))
+
+        if baseline == '':
+            # we will handle this case specially
+            baseline = False
+
+        commits = util.field_list(commits)
+        formatted = []
+        for commit in commits:
+            commit_data = model.commits()[commit]
+            message = commit_data.message.split("\n")
+            nonempty_lines = sum(map(bool, message))
+            data = {'commit': commit_data.key().name()[:9],
+                    'author': commit_data.author,
+                    'subject': message[0],
+                    'body': message[1:],
+                    'date': commit_data.author_time}
+            formatted.append(data)
+
+        # We also get the baseline
+        if baseline:
+            commit_data = model.commits()[baseline]
+            message = commit_data.message.split("\n")
+            nonempty_lines = sum(map(bool, message))
+            baseline = {'commit': commit_data.key().name()[:9],
+                        'author': commit_data.author,
+                        'subject': message[0],
+                        'body': message[1:],
+                        'date': commit_data.author_time}
+
+        html = template.render("commitinfo.html", {"commits": formatted, 'baseline':baseline})
+        html = re.sub(GERRIT_LINK_PATTERN, gerrit_link, html)
+        self.response.out.write(html)
 
 class HistoryHandler(webapp.RequestHandler):
     def build_history(self, commit, visited=set()):
@@ -566,6 +618,7 @@ def main():
         ('/import-filesets', ImportFileSetHandler),
         ('/import-codec-metrics', ImportCodecMetricHandler),
         (r'/history/(.*)', HistoryHandler),
+        (r'/commit-info/(.*)/(.*)', CommitInfoHandler),
         (r'/metric-data/(.*)/(.*)/(.*)/(.*)', CodecMetricHandler),
         (r'/average-improvement/(.*)/(.*)/(.*)/(.*)', AverageImprovementHandler),
         ('/graph', ChartHandler)

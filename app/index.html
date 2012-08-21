@@ -45,7 +45,7 @@ function FetchMetric(metricurl, series_name, responses) {
     type: "GET",
     url: metricurl,
     success: function(response){
-      responses.push({response: response, series_name: series_name});
+      responses.push({response: response, series_name: series_name, commits: metricurl.slice(metricurl.lastIndexOf('/') + 1)});
     },
     error: function(xhr, ajaxOptions, thrownError) {
         //$("#chartdiv").html("WHAA");
@@ -79,15 +79,9 @@ function ChartFiller(baseline) {
     if (bar_responses.length > 0) {
       drawChart2(bar_responses);
     }
-    else {
-      $('#tabs3').html("");
-    }
 
     if (time_responses.length > 0) {
-      drawChart3(time_responses);
-    }
-    else {
-      $('#tabs3').html("");
+      drawTimeSeriesChart(time_responses);
     }
 
   });
@@ -113,6 +107,7 @@ function ChartFiller(baseline) {
         if (files[k].slice(0, 8) === 'OVERALL:') {
           if (queryNum == 1)
             $('#chartdiv').html("Please select a file (or files) to view graph.");
+          $("#commitInfo").dialog('close');
           continue;
         }
 
@@ -185,6 +180,7 @@ function StatisticFiller() {
   if ((MetricState.length * ConfigState.length *
       FileState.filter(removeParents).length *
       CommitState.filter(removeParents).length) == 0) {
+    $("#commitInfo").dialog('close');
     $('#tabs11').html("Please select a valid run.");
     $('#tabs2').html("");
     $('#githistory').html("");
@@ -211,6 +207,7 @@ function StatisticFiller() {
 // ------------------------------------------------------------------------
 function ImprovementTable(data_in) {
   var baseline = data_in.baseline
+  var commitstr = data_in.commits
   data_in = data_in.data
 
   numCol = data_in.length;
@@ -258,11 +255,13 @@ function ImprovementTable(data_in) {
   $("#githistory").load("/history/"+baseline+","+commits);
 
   $('#container').show();
+  $("#commitInfo").dialog('close');
   $('#chartdiv').html("Please select a file (or files) to view graph.");
 
   // We add some bindings to allow for selecting rows of the table
   // Add our selection handler
   google.visualization.events.addListener(table, 'select', selectHandler);
+  google.visualization.events.addListener(table, 'sort', headerHandler);
 
   // The selection handler
   // Loop through all items in the selection and add them to FileTableState
@@ -289,10 +288,21 @@ function ImprovementTable(data_in) {
     ChartFiller(baseline);
     if (selection.length == 0) {
       // We get rid of tables that are no longer relevant
+      $("#commitInfo").dialog('close');
       $('#chartdiv').html("Please select a file (or files) to view graph.");
       $('#tabs2').html("");
-      $('#tabs3').html("");
     }
+  }
+
+  // Called when a header is clicked (not a row)
+  function headerHandler(event) {
+    if (commitstr[0] === '~') {
+      return; // We return early when we are doing a time series
+    }
+    $("#commitInfo").dialog('close');
+    $("#commitInfo").html("Loading...");
+    $("#commitInfo").load("/commit-info/"+commitstr+"/"+baseline);
+    $('#commitInfo').dialog('open');
   }
 
 }
@@ -326,12 +336,11 @@ function drawChart(data_in) {
     // Join the two tables into one view
     view = new google.visualization.data.join(view, data2, 'full', [[0,0]], leftColumns, [1]);
   }
-  //$("#tabs3").text(view.toJSON());
 
   // Set chart options
   var chartOptions = {title:'Rate Distortion Curves',
                  //chartArea: {right: 20, bottom: 10, height: "90%", width: "70%"},
-                 chartArea: {height: "90%", width: "70%"},
+                 chartArea: {height: "70%", width: "70%"},
                  vAxis: {title: data_in1.yaxis},
                  hAxis: {title: 'Bitrate'},
                  //vAxis: {title: 'y axis'},
@@ -351,6 +360,38 @@ function drawChart(data_in) {
   $(window).resize(function() {
     chart.draw(view, chartOptions);
   });
+
+  // Add our selection handler.
+  google.visualization.events.addListener(chart, 'select', selectHandler);
+
+  // The selection handler.
+  function selectHandler() {
+    var selection = chart.getSelection();
+    chart.setSelection();
+    for (var i = 0; i < selection.length; i++) {
+      var item = selection[i];
+      var commits = new Array();
+      var baseline = '';
+      // If we click something in the legend
+      if (item.column != null && item.row == null) {
+        // We get all the series labels
+        for (var j = 0; j < numCurves; j++){
+          var commit = data_in[j].series_name.label;
+          var lastchar = commit[commit.length-1];
+          if (lastchar === ')')
+            baseline = data_in[j].commits.toString();
+          else
+            commits.push(data_in[j].commits);
+        }
+
+      $("#commitInfo").dialog('close');
+      $("#commitInfo").html("Loading...");
+      $("#commitInfo").load("/commit-info/"+commits.join(',')+"/"+baseline);
+      $('#commitInfo').dialog('open');
+      }
+    }
+  }
+
 }
 
 // -----------------------------------------------------------------------------
@@ -412,7 +453,7 @@ function drawChart2(data_in) {
 
   // Set chart options
   var chartOptions = {title:'Performance',
-                 chartArea: {height: "90%", width: "70%"},
+                 chartArea: {height: "70%", width: "70%"},
                  vAxis: {title: data_in[0][0].response.yaxis},
                 };
   var tableOptions = {width: 'automatic'};
@@ -427,10 +468,42 @@ function drawChart2(data_in) {
   $(window).resize(function() {
     chart2.draw(view, chartOptions);
   });
+
+  // Add our selection handler.
+  google.visualization.events.addListener(chart2, 'select', selectHandler);
+
+  // The selection handler.
+  function selectHandler() {
+    var selection = chart2.getSelection();
+    chart2.setSelection();
+
+    for (var i = 0; i < selection.length; i++) {
+      var item = selection[i];
+      var commits = new Array();
+      var baseline = '';
+      // If we click something in the legend
+      if (item.column != null && item.row == null) {
+        for (var j = 0; j < data_in.length; j++){
+          var series_name = data_in[j][0].series_name;
+          var commit = series_name.commit;
+          var lastchar = commit[commit.length-1];
+          if (lastchar === ')')
+            baseline = data_in[j][0].commits.toString();
+          else
+            commits.push(data_in[j][0].commits);
+        }
+
+      $("#commitInfo").dialog('close');
+      $("#commitInfo").html("Loading...");
+      $("#commitInfo").load("/commit-info/"+commits.join(',')+"/"+baseline);
+      $('#commitInfo').dialog('open');
+      }
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
-function drawChart3(data_in) {
+function drawTimeSeriesChart(data_in) {
   var numCurves = data_in.length;
   var view;
   var data2;
@@ -444,7 +517,9 @@ function drawChart3(data_in) {
   }
 
   var data1 = new google.visualization.DataTable();
+  var to_graph = {}
   data1.addColumn('datetime', 'Datetime');
+  data1.addColumn('string', 'Commit Id');
   data1.addColumn('number', data_in[0].series_name.label);
   data1.addRows(data_in1.data);
   data1.sort(0);
@@ -460,12 +535,17 @@ function drawChart3(data_in) {
     }
     data2 = new google.visualization.DataTable();
     data2.addColumn('datetime', 'Datetime');
+    data2.addColumn('string', 'Commit Id');
     data2.addColumn('number',  data_in[i].series_name.label);
     data2.addRows(data_in2);
     data2.sort(0);
-    leftColumns = range(1, i);
-    view = new google.visualization.data.join(view, data2, 'full', [[0,0]], leftColumns, [1]);
+    leftColumns = range(2, i + 1);
+    view = new google.visualization.data.join(view, data2, 'full', [[0,0], [1,1]], leftColumns, [2]);
   }
+
+  chart_view = new google.visualization.DataView(view);
+  // We filter out the 2nd column (commit data) to display
+  chart_view.hideColumns([1]);
 
   var chartOptions = {title:'Time Series',
                  chartArea: {height: "70%", width: "70%"},
@@ -479,12 +559,40 @@ function drawChart3(data_in) {
 
   var chart = new google.visualization.LineChart(document.getElementById("chartdiv"));
   var table = new google.visualization.Table(document.getElementById("tabs2"));
-  chart.draw(view, chartOptions);
+  chart.draw(chart_view, chartOptions);
   table.draw(view, tableOptions);
 
   $(window).resize(function() {
-    chart.draw(view, chartOptions);
+    chart.draw(chart_view, chartOptions);
   });
+
+  // Add our selection handler.
+  google.visualization.events.addListener(chart, 'select', selectHandler);
+
+  // The selection handler.
+  // Loop through all items in the selection and concatenate
+  // a single message from all of them.
+  function selectHandler() {
+    var selection = chart.getSelection();
+    var commitid = '';
+    for (var i = 0; i < selection.length; i++) {
+      var item = selection[i];
+      if (item.row != null && item.column != null) {
+        commitid = view.getFormattedValue(item.row, 1);
+      }
+    }
+
+    if (commitid !== ''){
+      $("#commitInfo").dialog('close');
+      $("#commitInfo").html("Loading...");
+      $("#commitInfo").load("/commit-info/"+commitid+"/");
+      $('#commitInfo').dialog('open');
+    }
+    else {
+      $('#commitInfo').dialog('close');
+    }
+  }
+
 }
 
 </script>
@@ -499,6 +607,8 @@ $(function() {
   });
   $("#helpdialog").dialog({ autoOpen: false, width: 800 });
   $("#helpbutton").bind('click', help);
+
+  $("#commitInfo").dialog({ autoOpen: false, width: 800, position: ['right','top']  });
 
   $('#container').hide();
 
@@ -555,7 +665,7 @@ Reset
 <li>The reset button unchecks all selected options. </li>
 </ul>
 </div>
-<a href="#null" id="helpbutton" style="display:table-cell;	vertical-align: middle;">
+<a href="#null" id="helpbutton" style="display:table-cell; vertical-align: middle;">
 Help
 </a>
 
@@ -607,12 +717,14 @@ class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-arrowthick-2-n-s"></d
 
 <div id="bottomcenter">
 
+<div id="commitInfo" title="Commit Information"> </div>
+
 <!-- the tab widget -->
 <div id="tabs">
   <ul class="tabnav">
     <li><a href="#tabs1">Graph</a></li>
     <li><a href="#tabs2">Table</a></li>
-    <!-- <li><a href="#tabs3">Notes</a></li> --->
+    <li><a href="#tabs3">Commit History</a></li>
   </ul>
 
   <div id="tabs1" class="tabdiv">
@@ -626,11 +738,12 @@ class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-arrowthick-2-n-s"></d
 
     </div>
     <div class="clear"></div>
-    <div class="ui-widget-content" id="githistory"></div>
+
   </div>
   <div id="tabs2" class="tabdiv">
   </div>
   <div id="tabs3" class="tabdiv">
+    <div class="ui-widget-content" id="githistory"></div>
   </div>
 
 </div> <!-- end of tabs -->
