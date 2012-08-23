@@ -272,7 +272,7 @@ function initTrees(){
     $('#tabs11').html('Please select a valid run.');
     $('#chartdiv').html('');
     $('#tabs2').html('');
-    $('#tabs3').html('');
+    $('#githistory').html('');
 
     TreeHandler();
   });
