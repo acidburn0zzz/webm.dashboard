@@ -143,6 +143,7 @@ class ImprovementAnalysisPipeline(base_handler.PipelineBase):
             "mapreduce.output_writers.BlobstoreOutputWriter",
             mapper_params={
                 "entity_kind": "model.CodecMetric",
+                "batch_size": 10,
             },
             reducer_params={
                 "mime_type": "text/plain",
