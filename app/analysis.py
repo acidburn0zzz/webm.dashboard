@@ -7,6 +7,12 @@
 ##  in the file PATENTS.  All contributing project authors may
 ##  be found in the AUTHORS file in the root of the source tree.
 ##
+# Setup django to silence deprecation warning for 0.96
+import os
+os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
+from google.appengine.dist import use_library
+use_library('django', '1.2')
+
 import hashlib
 from django.utils import simplejson as json
 
