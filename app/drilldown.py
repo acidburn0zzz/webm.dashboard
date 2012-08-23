@@ -419,7 +419,8 @@ class DrilldownMatrix(object):
                 if match_all_but(e, params, idx):
                     result[idx] = result[idx].union(e._data[idx])
 
-        if metric:
+        time_series = commit and commit[0] == "~"
+        if metric and not time_series:
             # Must match the y-axis of the specified metric
             candidate_metrics = set()
             yaxis = model.metrics()[metric].yaxis
