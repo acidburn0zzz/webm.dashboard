@@ -8,7 +8,7 @@
 ##  be found in the AUTHORS file in the root of the source tree.
 ##
 import hashlib
-import json
+from django.utils import simplejson as json
 
 from curve_compare import DataBetter
 from drilldown import drilldown
