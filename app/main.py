@@ -241,7 +241,7 @@ def fetch_time_series(metric, config, files, commit):
     for data in q:
         if data.file_or_set_name in files:
             result[data.file_or_set_name] = zip(
-                [(x.year, x.month, x.day, x.hour, x.minute, x.second)
+                [(x.year, x.month - 1, x.day, x.hour, x.minute, x.second)
                     for x in data.times],
                 data.commits,
                 [(x-1.0)*100.0 for x in data.values])
