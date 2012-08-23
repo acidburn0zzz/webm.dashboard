@@ -87,6 +87,7 @@ class ImportFileSetHandler(webapp.RequestHandler):
                        file_sets=files_added[filename]).put()
         memcache.flush_all()
         model.reset_fileset_cache()
+        model.reset_files_cache()
 
 class ImportCodecMetricHandler(webapp.RequestHandler):
     def put_metric_index(self, parent, metrics, files):
