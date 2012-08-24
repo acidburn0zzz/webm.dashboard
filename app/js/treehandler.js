@@ -252,30 +252,34 @@ function resetTree(divName, ContentsList, StateList, OldStateList) {
   });
 };
 
+function treeReset(){
+  $("#treeView1").jstree("uncheck_all");
+  MetricState = [];
+  $("#treeView2").jstree("uncheck_all");
+  ConfigState = [];
+  $("#treeView3").jstree("uncheck_all");
+  FileState = [];
+  $("#treeView4").jstree("uncheck_all");
+  CommitState = [];
+
+  // We also clear out the appropriate tabs.
+  $('#tabs11').html('Please select a valid run.');
+  $('#chartdiv').html('');
+  $('#tabs2').html('');
+  $('#githistory').html('');
+
+  TreeHandler();
+}
+
+
+
 // ---------------------------------------------------------------------------
 // Handle the bindings of a tree in the given div with the given global state
 function initTrees(){
 
   // Clears out all trees when a button is clicked
   // TODO (rlawler): Figure out a way to avoid duplicating these calls
-  $("#resetbutton").click(function(){
-    $("#treeView1").jstree("uncheck_all");
-    MetricState = [];
-    $("#treeView2").jstree("uncheck_all");
-    ConfigState = [];
-    $("#treeView3").jstree("uncheck_all");
-    FileState = [];
-    $("#treeView4").jstree("uncheck_all");
-    CommitState = [];
-
-    // We also clear out the appropriate tabs.
-    $('#tabs11').html('Please select a valid run.');
-    $('#chartdiv').html('');
-    $('#tabs2').html('');
-    $('#githistory').html('');
-
-    TreeHandler();
-  });
+  $("#resetbutton").click(treeReset);
 
   // We load the initial trees with all options
   TreeHandler();
