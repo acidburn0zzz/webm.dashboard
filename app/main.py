@@ -38,7 +38,7 @@ import curve_compare
 import model
 import util
 
-GERRIT_LINK_HTML=("<a href=\"https://gerrit.chromium.org/gerrit/"
+GERRIT_LINK_HTML=("<a target='_blank' href=\"https://gerrit.chromium.org/gerrit/"
                   "#q,%s,n,z\">%s</a>")
 GERRIT_LINK_PATTERN="(I[a-f0-9]{40})"
 # We give metrics their own handler for convenience
