@@ -179,8 +179,10 @@ def fetch_codec_metric(metric, config, filename, commit):
 
             if metric_data.distortion:
                 this_run_data.append(run["Bitrate"])
+                this_run_data.append(run["target_bitrate"])
 
             this_run_data.append(run[metric])
+
             result.append(this_run_data)
 
     # Sanity checks
@@ -218,6 +220,7 @@ def fetch_metric_for_fileset(metric, config, files, commit):
                     this_run_data.append(run["Bitrate"])
 
                 this_run_data.append(run[metric])
+
                 result.append(this_run_data)
             results_by_file[filename] = result
 
@@ -531,6 +534,75 @@ class CommitInfoHandler(webapp.RequestHandler):
         html = re.sub(GERRIT_LINK_PATTERN, gerrit_link, html)
         self.response.out.write(html)
 
+@cache_result()
+def fetch_config_info(metric, config, filename, commit):
+    '''This function fetches the data for a given metric, config, filename,
+    commit tuple. This functionality is used multiple places, such as
+    CodecMetricHandler and AverageImprovementHandler.'''
+    indexes = model.CodecMetricIndex.all(keys_only = True)
+    indexes = indexes.filter('metrics =', metric)
+    indexes = indexes.filter('config_name =', config)
+    indexes = indexes.filter('files =', filename)
+    indexes = indexes.filter('commit =', commit)
+    keys = [k.parent() for k in indexes]
+
+    if len(keys) == 0:
+        return None
+
+    metric_data = model.metrics()[metric]
+    result=[]
+    for cm in db.get(keys): # cm = codec metric
+
+        # we get the runtime and config flags
+        config_flags = cm.config_flags
+        runtime_flags = cm.runtime_flags
+        commit = cm.commit
+
+        result.append((commit, config_flags, runtime_flags))
+
+    # Sanity checks - we only want one runtime configuration
+    assert len(result) == 1
+
+    # We go ahead and return the tuple
+    result = result[0]
+    return result
+
+class ConfigInfoHandler(webapp.RequestHandler):
+    '''This hander is used to get all the information regarding the config
+    required to reproduce a data point'''
+    def get(self, metric, config, filename, commit, bitrate):
+
+        config_info = fetch_config_info(metric, config, filename, commit)
+        commit, config_flags, runtime_flags = config_info
+
+        if bitrate != '':
+            bitrate = float(bitrate)
+
+            # Now we replace the string ${target_bitrate} in runtime_flags
+            i = runtime_flags.find('${target_bitrate}')
+            runtime_flags = runtime_flags[:i] + str(bitrate)
+
+        # We see if this commit is in gerrit
+        commit_data = model.commits()[commit]
+        if commit_data.gerrit_url is not None:
+            commit_url = commit_data.gerrit_url
+            commit_ref = commit_data.gerrit_patchset_ref
+            commit_in_gerrit = True
+            commit = {'commitid': commit,
+                      'commit_in_gerrit': True,
+                      'commit_url': commit_data.gerrit_url,
+                      'commit_ref': commit_data.gerrit_patchset_ref}
+        else:
+            commit = {'commitid': commit,
+                      'commit_in_gerrit': False}
+
+        response = {'commit': commit,
+                    'config_flags': config_flags,
+                    'runtime_flags': runtime_flags}
+
+        html = template.render("configinfo.html", response)
+        self.response.out.write(html)
+
 class HistoryHandler(webapp.RequestHandler):
     def build_history(self, commit, visited=set()):
         to_visit = [commit]
@@ -620,6 +692,7 @@ def main():
         ('/import-codec-metrics', ImportCodecMetricHandler),
         (r'/history/(.*)', HistoryHandler),
         (r'/commit-info/(.*)/(.*)', CommitInfoHandler),
+        (r'/config-info/(.*)/(.*)/(.*)/(.*)/(.*)', ConfigInfoHandler),
         (r'/metric-data/(.*)/(.*)/(.*)/(.*)', CodecMetricHandler),
         (r'/average-improvement/(.*)/(.*)/(.*)/(.*)', AverageImprovementHandler),
         ('/graph', ChartHandler)

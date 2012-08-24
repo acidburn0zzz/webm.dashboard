@@ -41,11 +41,14 @@ var FileTableState = new Array();
 google.load('visualization', '1.0', {'packages':['corechart', 'table']});
 
 function FetchMetric(metricurl, series_name, responses) {
+  var split_lst = metricurl.split('/');
   $.ajax({
     type: "GET",
     url: metricurl,
     success: function(response){
-      responses.push({response: response, series_name: series_name, commits: metricurl.slice(metricurl.lastIndexOf('/') + 1)});
+      responses.push({response: response, series_name: series_name,
+                      metric: split_lst[2], config: split_lst[3],
+                      filename: split_lst[4], commit: split_lst[5]});
     },
     error: function(xhr, ajaxOptions, thrownError) {
         //$("#chartdiv").html("WHAA");
@@ -108,6 +111,7 @@ function ChartFiller(baseline) {
           if (queryNum == 1)
             $('#chartdiv').html("Please select a file (or files) to view graph.");
           $("#commitInfo").dialog('close');
+          $("#configInfo").dialog('close');
           continue;
         }
 
@@ -181,6 +185,7 @@ function StatisticFiller() {
       FileState.filter(removeParents).length *
       CommitState.filter(removeParents).length) == 0) {
     $("#commitInfo").dialog('close');
+    $("#configInfo").dialog('close');
     $('#tabs11').html("Please select a valid run.");
     $('#tabs2').html("");
     $('#githistory').html("");
@@ -207,7 +212,6 @@ function StatisticFiller() {
 // ------------------------------------------------------------------------
 function ImprovementTable(data_in) {
   var baseline = data_in.baseline
-  var commitstr = data_in.commits
   data_in = data_in.data
 
   numCol = data_in.length;
@@ -250,12 +254,14 @@ function ImprovementTable(data_in) {
   var table = new google.visualization.Table(document.getElementById("tabs11"));
   table.draw(view, tableOptions);
 
+  var commitstr = CommitState.join(',');
   var commits = CommitState.filter(removeParents).join(",");
   $("#githistory").html("Loading...");
   $("#githistory").load("/history/"+baseline+","+commits);
 
   $('#container').show();
   $("#commitInfo").dialog('close');
+  $("#configInfo").dialog('close');
   $('#chartdiv').html("Please select a file (or files) to view graph.");
 
   // We add some bindings to allow for selecting rows of the table
@@ -289,6 +295,7 @@ function ImprovementTable(data_in) {
     if (selection.length == 0) {
       // We get rid of tables that are no longer relevant
       $("#commitInfo").dialog('close');
+      $("#configInfo").dialog('close');
       $('#chartdiv').html("Please select a file (or files) to view graph.");
       $('#tabs2').html("");
     }
@@ -317,7 +324,8 @@ function drawChart(data_in) {
   data_in1 = data_in[0].response;
 
   var data1 = new google.visualization.DataTable();
-  data1.addColumn('number', 'X');
+  data1.addColumn('number', 'Bitrate');
+  data1.addColumn('number', 'target bitrate');
   data1.addColumn('number', data_in[0].series_name.label);
   data1.addRows(data_in1.data);
   view = new google.visualization.DataView(data1);
@@ -325,16 +333,16 @@ function drawChart(data_in) {
   for (var i = 1; i < numCurves; i++){
     data_in2 = data_in[i].response.data;
     data2 = new google.visualization.DataTable();
-    data2.addColumn('number', 'X');
-
+    data2.addColumn('number', 'Bitrate');
+    data2.addColumn('number', 'target bitrate');
     data2.addColumn('number',  data_in[i].series_name.label);
+
     data2.addRows(data_in2);
 
-    // A list of numbers from 1 to i
-    leftColumns = range(1, i);
-
     // Join the two tables into one view
-    view = new google.visualization.data.join(view, data2, 'full', [[0,0]], leftColumns, [1]);
+    leftColumns = range(2, i + 1);
+    view = new google.visualization.data.join(view, data2, 'full', [[0,0], [1,1]], leftColumns, [2]);
+
   }
 
   // Set chart options
@@ -350,10 +358,14 @@ function drawChart(data_in) {
                 };
   var tableOptions = {width: 'automatic'};
 
+  // We filter out target_bitrate for the sake of the chart
+  chart_view = new google.visualization.DataView(view);
+  chart_view.hideColumns([1]);
+
   // Instantiate and draw our chart, passing in some options.
   var chart = new google.visualization.LineChart(document.getElementById("chartdiv"));
   var table = new google.visualization.Table(document.getElementById("tabs2"));
-  chart.draw(view, chartOptions);
+  chart.draw(chart_view, chartOptions);
   table.draw(view, tableOptions);
 
   // We now add a function to resize the chart when the page is resized
@@ -372,6 +384,7 @@ function drawChart(data_in) {
       var item = selection[i];
       var commits = new Array();
       var baseline = '';
+
       // If we click something in the legend
       if (item.column != null && item.row == null) {
         // We get all the series labels
@@ -379,16 +392,35 @@ function drawChart(data_in) {
           var commit = data_in[j].series_name.label;
           var lastchar = commit[commit.length-1];
           if (lastchar === ')')
-            baseline = data_in[j].commits.toString();
+            baseline = data_in[j].commit;
           else
-            commits.push(data_in[j].commits);
+            commits.push(data_in[j].commit);
         }
 
-      $("#commitInfo").dialog('close');
-      $("#commitInfo").html("Loading...");
-      $("#commitInfo").load("/commit-info/"+commits.join(',')+"/"+baseline);
-      $('#commitInfo').dialog('open');
+        $("#commitInfo").dialog('close');
+        $("#commitInfo").html("Loading...");
+        $("#commitInfo").load("/commit-info/"+commits.join(',')+"/"+baseline);
+        $('#commitInfo').dialog('open');
       }
+
+      // If we click on a data point
+      else if (item.column != null && item.row != null) {
+        var metric = data_in[item.column - 1].metric;
+        var config = data_in[item.column - 1].config;
+        var filename = data_in[item.column - 1].filename;
+        var commit = data_in[item.column - 1].commit;
+        var bitrate = view.getValue(item.row, 1);
+
+        // We need metric, file, config, and commit for this data point
+        var url = metric + "/" + config + '/' + filename + '/' + commit + '/' +
+                  bitrate;
+
+        $("#configInfo").dialog('close');
+        $("#configInfo").html("Loading...");
+        $("#configInfo").load("/config-info/" + url);
+        $('#configInfo').dialog('open');
+      }
+
     }
   }
 
@@ -481,6 +513,7 @@ function drawChart2(data_in) {
       var item = selection[i];
       var commits = new Array();
       var baseline = '';
+
       // If we click something in the legend
       if (item.column != null && item.row == null) {
         for (var j = 0; j < data_in.length; j++){
@@ -488,15 +521,46 @@ function drawChart2(data_in) {
           var commit = series_name.commit;
           var lastchar = commit[commit.length-1];
           if (lastchar === ')')
-            baseline = data_in[j][0].commits.toString();
+            baseline = data_in[j][0].commit;
           else
-            commits.push(data_in[j][0].commits);
+            commits.push(data_in[j][0].commit);
         }
 
-      $("#commitInfo").dialog('close');
-      $("#commitInfo").html("Loading...");
-      $("#commitInfo").load("/commit-info/"+commits.join(',')+"/"+baseline);
-      $('#commitInfo').dialog('open');
+        $("#commitInfo").dialog('close');
+        $("#commitInfo").html("Loading...");
+        $("#commitInfo").load("/commit-info/"+commits.join(',')+"/"+baseline);
+        $('#commitInfo').dialog('open');
+      }
+
+      // If we click on a data point
+      else if (item.column != null && item.row != null) {
+        var commit_start = view.getColumnLabel(item.column).slice(0,9);
+        var filename = view.getValue(item.row, 0);
+        var commit;
+        var metric;
+        var config;
+
+        // Is there a better way of corresponding points and thier set-ups?
+        for (var j = 0; j < data_in.length; j++) {
+          // here data_in[j] is an array of objects - each array being one commit
+          for (var k = 0; k < data_in[j].length; k++){
+            var obj = data_in[j][k];
+            if (obj.commit.slice(0,9) === commit_start){
+              metric = obj.metric;
+              commit = obj.commit;
+              config = obj.config;
+              break;
+            }
+          }
+        }
+
+        // We need metric, file, config, and commit for this data point
+        var url = metric + "/" + config + '/' + filename + '/' + commit + '/' + '';
+
+        $("#configInfo").dialog('close');
+        $("#configInfo").html("Loading...");
+        $("#configInfo").load("/config-info/" + url);
+        $('#configInfo').dialog('open');
       }
     }
   }
@@ -609,7 +673,7 @@ $(function() {
   $("#helpbutton").bind('click', help);
 
   $("#commitInfo").dialog({ autoOpen: false, width: 800, position: ['right','top']  });
-
+  $("#configInfo").dialog({ autoOpen: false, width: 800, position: ['right','top']  });
   $('#container').hide();
 
   // This hides the whitespace used for storing the chart
@@ -718,6 +782,7 @@ class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-arrowthick-2-n-s"></d
 <div id="bottomcenter">
 
 <div id="commitInfo" title="Commit Information"> </div>
+<div id="configInfo" title="Configuration Information"> </div>
 
 <!-- the tab widget -->
 <div id="tabs">

@@ -1,0 +1,9 @@
+<h4> Configuration required to reproduce data </h4>
+{% if commit.commit_in_gerrit %}
+$ git fetch {{commit.commit_url}} {{commit.commit_ref}}<br>
+{% endif %}
+$ git checkout {{ commit.commitid }}<br>
+$ ./configure {{ config_flags }}<br>
+{% if runtime_flags != None %}
+$ {{ runtime_flags }}<br>
+{% endif %}
