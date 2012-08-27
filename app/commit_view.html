@@ -1,0 +1,55 @@
+<h4> Commits </h4>
+
+<div id="leftCol" style="float: left; width: 50%">
+<table width="100%">
+    <tr id="{{commit.commit}}_row">
+        <td width="10em">{{ commit.commit }}</td>
+        <td>{{ commit.date }}</td>
+    </tr>
+    <tr id="{{commit.commit}}_row2">
+        <td width="10em"></td>
+        <td>{{ commit.author }}</td>
+    </tr>
+    <tr id="{{commit.commit}}_row3">
+        <td width="10em"></td>
+        <td>
+            <div>{{ commit.subject }}</div>
+            <div id="{{commit.commit}}_body1">
+                {% for line in commit.body %}
+                {{ line }}<br>
+                {% endfor %}
+            </div>
+        </td>
+    </tr>
+    <tr id="{{commit.commit}}_row4">
+        <td width="10em"></td>
+        <td>
+            <div> Branches:</div>
+            <div id="{{commit.commit}}_body2">
+                {% if commit.branches %}
+                  {% for br in commit.branches %}
+                   {{ br }}<br>
+                  {% endfor %}
+                {% else %}
+                  None
+                {% endif %}
+            </div>
+        </td>
+    </tr>
+</table>
+</div>
+
+<div id="rightCol" style="float: left; width: 50%">
+{% for e in runs %}
+  {% if e.color == 'red' %}
+  <p style="color: red;" onclick='{{e.clickcommand}}'>
+  {{ e.metric }}, {{ e.config }}, {{ e.filename }}
+  </p>
+
+  {% else %}
+  <p style="color: green;" onclick='{{e.clickcommand}}'>
+  {{ e.metric }}, {{ e.config }}, {{ e.filename }}
+  </p>
+  {% endif %}
+{% endfor %}
+</div>
