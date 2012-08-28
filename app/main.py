@@ -351,6 +351,8 @@ def calculate_improvement(m, cfg, fs, cm, base_data, composite_fn):
     sum_overall = 0
     count_overall = 0
     for f in fs:
+        if f not in base_data or f not in data:
+            continue
         composite = composite_fn(base_data[f], data[f])
         sum_overall += composite
         count_overall += 1

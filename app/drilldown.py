@@ -71,6 +71,9 @@ def metric_tree_formatter(metric_cache):
     # A display name of "" means we have something like bitrate or time
     formatted = []
     for metricname, metricdata in metric_cache:
+        if not metricdata:
+            logging.info("Missing metric data for %s"%metricname)
+            continue
         if metricdata.display_name != "":
             formatted.append({"data":metricdata.display_name,
                               "attr":{"id": metricname}})
@@ -80,6 +83,9 @@ def metric_tree_formatter(metric_cache):
 def file_tree_formatter(file_cache):
     filesets = {}
     for filename, filedata in file_cache:
+        if not filedata:
+            logging.info("Missing file data for %s"%filename)
+            continue
         if filename[0] == "~":
             continue
         for fileset in filedata.file_sets:
