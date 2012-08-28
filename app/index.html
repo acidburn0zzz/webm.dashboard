@@ -31,6 +31,42 @@ var ConfigState = new Array();
 var FileState = new Array();
 var CommitState = new Array();
 var FileTableState = new Array();
+var openList = new Array();
+
+{% if development %}
+var development = true;
+{% else %}
+var development = false;
+{% endif %}
+
+var init = true;
+var tableinit = true;
+
+// We build up our State lists (if applicable) from our template values.
+{% if metrics %}
+MetricState = '{{metrics}}'.split(',');
+{% endif %}
+
+{% if configs %}
+ConfigState = '{{configs}}'.split(',');
+{% endif %}
+
+{% if filesets %}
+FileState = '{{filesets}}'.split(',');
+{% endif %}
+
+{% if commits %}
+CommitState = '{{commits}}'.split(',');
+{% endif %}
+
+{% if filenames %}
+FileTableState = '{{filenames}}'.split(',');
+{% endif %}
+
+{% if opentrees %}
+openList = '{{opentrees}}'.split(',');
+{% endif %}
+
 
 </script>
 <script type="text/javascript" src="/js/treehandler.js"></script>
@@ -108,8 +144,10 @@ function ChartFiller(baseline) {
     for (var j = 0; j < ConfigState.length; j++) {
       for (var k = 0; k < files.length; k++) {
         if (files[k].slice(0, 8) === 'OVERALL:') {
-          if (queryNum == 1)
+          if (queryNum == 1) {
             $('#chartdiv').html("Please select a file (or files) to view graph.");
+            $('#tabs2').html("");
+          }
           $("#commitInfo").dialog('close');
           $("#configInfo").dialog('close');
           continue;
@@ -252,6 +290,9 @@ function ImprovementTable(data_in) {
   var tableOptions = {width: 'automatic', allowHtml: 'true'};
 
   var table = new google.visualization.Table(document.getElementById("tabs11"));
+  google.visualization.events.addListener(table, 'select', selectHandler);
+  google.visualization.events.addListener(table, 'sort', headerHandler);
+  google.visualization.events.addListener(table, 'ready', setupHandler);
   table.draw(view, tableOptions);
 
   var commitstr = CommitState.join(',');
@@ -266,8 +307,25 @@ function ImprovementTable(data_in) {
 
   // We add some bindings to allow for selecting rows of the table
   // Add our selection handler
-  google.visualization.events.addListener(table, 'select', selectHandler);
-  google.visualization.events.addListener(table, 'sort', headerHandler);
+
+  function setupHandler() {
+    // We now select any default values (in FileTableState)
+    if (!tableinit)
+      // If we are not preselecting anything.
+      return;
+
+    var numRows = data_in[0].data.length;
+    var rows_to_select = [];
+    for (var i = 0; i < numRows; i++) {
+      for (var j = 0; j < FileTableState.length; j++) {
+        if (view.getValue(i, 0) === FileTableState[j])
+          rows_to_select.push({row: i});
+      }
+    }
+    tableinit = false;
+    table.setSelection(rows_to_select);
+    selectHandler();
+  }
 
   // The selection handler
   // Loop through all items in the selection and add them to FileTableState
@@ -672,6 +730,9 @@ $(function() {
   $("#helpdialog").dialog({ autoOpen: false, width: 800 });
   $("#helpbutton").bind('click', help);
 
+  $("#sharedialog").dialog({ autoOpen: false, width: 800 });
+  $("#sharebutton").bind('click', share);
+
   $("#commitInfo").dialog({ autoOpen: false, width: 800, position: ['right','top']  });
   $("#configInfo").dialog({ autoOpen: false, width: 800, position: ['right','top']  });
   $('#container').hide();
@@ -690,6 +751,31 @@ $(function() {
 
 function help() {
   $("#helpdialog").dialog('open');
+}
+
+function share() {
+  // This function creates and displays a custom url for accessing the current
+  // dashboard view
+  var url;
+
+  if (development)
+    url = "localhost:8080/";
+  else
+    url = "http://www.dashboard.webmproject.org/";
+
+  var metrics = MetricState.join(",");
+  var configs = ConfigState.join(",");
+  var filesets = FileState.join(",");
+  var commits = CommitState.filter(removeParents).join(",");
+  var filenames = FileTableState.join(",");
+  var opentrees = openList.join(',');
+  url = url + metrics + "/" + configs + "/" + filesets + "/" + commits +
+        "/" + filenames + "/" + opentrees;
+
+  var hyperurl = '<a href="' + url + '" target="_blank">' + url + "</a>";
+
+  $('#shareurl').html(hyperurl);
+  $("#sharedialog").dialog('open');
 }
 
 </script>
@@ -719,6 +805,8 @@ Welcome, {{ user.nickname }}! <a href="{{ logout_url }}">Sign Out</a>
 Reset
 </a>
 &nbsp;|&nbsp;
+
+<!-- Help button -->
 <div id="helpdialog" title="About this page">
 <ul>
 <li>To view a graph of performance data, please select some metrics, configurations, filesets and patch sets. </li>
@@ -731,6 +819,18 @@ Reset
 </div>
 <a href="#null" id="helpbutton" style="display:table-cell; vertical-align: middle;">
 Help
+</a>
+&nbsp;|&nbsp;
+
+<!-- A button to share the current view -->
+<div id="sharedialog" title="Share this view">
+To share the current view with someone else, use this custom url below:
+<div id="shareurl">
+</div>
+</div>
+
+<a href="#null" id="sharebutton" style="display:table-cell; vertical-align: middle;">
+Share
 </a>
 
 
