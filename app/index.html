@@ -8,23 +8,12 @@
 <script type="text/javascript" src="/js/jstree/jquery.jstree.js"></script>
 <link rel="stylesheet" type="text/css" href="/js/jquery-ui/css/smoothness/jquery-ui-1.8.21.custom.css" />
 <script type="text/javascript" src="/js/jquery-ui/js/jquery-ui-1.8.21.custom.min.js"></script>
-
-<!-- Making an AJAX request to a local server function ------------------------>
 <script type="text/javascript" src="/js/json2.js"></script>
+
+<!-- A file with useful js functions -->
+<script type="text/javascript" src="/js/utils.js"></script>
+
 <script type="text/javascript">
-
-function is_distortion(metric)
-{
-  return (['CxFPS', 'DxFPS'].indexOf(metric) == -1);
-};
-
-function range(start, end)
-{
-  var foo = [];
-  for (var i = start; i <= end; i++)
-    foo.push(i);
-  return foo;
-}
 
 var MetricState = new Array();
 var ConfigState = new Array();
@@ -75,22 +64,6 @@ openList = '{{opentrees}}'.split(',');
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
 <script>
 google.load('visualization', '1.0', {'packages':['corechart', 'table']});
-
-function FetchMetric(metricurl, series_name, responses) {
-  var split_lst = metricurl.split('/');
-  $.ajax({
-    type: "GET",
-    url: metricurl,
-    success: function(response){
-      responses.push({response: response, series_name: series_name,
-                      metric: split_lst[2], config: split_lst[3],
-                      filename: split_lst[4], commit: split_lst[5]});
-    },
-    error: function(xhr, ajaxOptions, thrownError) {
-        // Nothing for now
-    },
-  });
-}
 
 function ChartFiller(baseline) {
   var dist_responses = new Array();
