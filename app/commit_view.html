@@ -138,7 +138,7 @@ function drawChart(data_in) {
   chart_view.hideColumns([1]);
 
   // Instantiate and draw our chart, passing in some options.
-  var chart = new google.visualization.LineChart(document.getElementById("chartdialog"));
+  var chart = new google.visualization.LineChart(document.getElementById("chartdiv"));
   chart.draw(chart_view, chartOptions);
   $('#chartdialog').dialog({height: 600, width: 800}).dialog('open');
 
@@ -187,6 +187,7 @@ function drawChart(data_in) {
 
     }
   }
+
 }
 
 
@@ -326,7 +327,7 @@ function drawChart2(data_in) {
 
 
 $(function() {
-  $("#chartdialog").dialog({ autoOpen: false, width: 800, height: 600  });
+  $("#chartdialog").dialog({ autoOpen: false});
   $("#configInfo").dialog({ autoOpen: false, width: 800, position: ['right','top']  });
   google.load('visualization', '1.0', {'packages':['corechart', 'table']});
 });
@@ -339,17 +340,35 @@ $(function() {
 <div id="headerLeft">
 Commit Summary : {{ commit.commitid }}
 </div>
-</div>
 
-<div id="mainbody">
+<div id="headerRight">
+
+<!-- A button to clear out all trees -->
+<a href="/commit_viewer/" id="resetbutton" style="display:table-cell; vertical-align: middle;">
+Search
+</a>
+&nbsp;|&nbsp;
+
+<!-- Help button -->
+<a href="/" id="helpbutton" style="display:table-cell; vertical-align: middle;">
+Back to Dashboard
+</a>
+
+
+</div>
+<div class="clear"></div>
+
 
 <!-- divs for pop up dialogs -->
 <div id="chartdialog">
+<div id="chartdiv"></div>
+<div id="status">STATUS</div>
 </div>
 
 <div id="configInfo">
 </div>
 
+<div id="mainbody">
 <!-- divs for displaying the run data -->
 <div id="leftCol" style="float: left; width: 50%">
 <table width="100%">
