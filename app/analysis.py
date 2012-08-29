@@ -47,7 +47,7 @@ def percent_improvement_map(entry):
     config = entry.config_name
     commit = entry.commit
     depth = model.commits()[commit].depth
-    branches = ["master"]#model.commits()[commit].branches
+    branches = model.commits()[commit].branches
     for metric, filename, values in data_map(entry):
         filesets = model.files()[filename].file_sets
 

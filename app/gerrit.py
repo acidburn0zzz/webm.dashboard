@@ -141,6 +141,7 @@ class ImportCommitHandler(webapp.RequestHandler):
                        commit_time=commit_time,
                        message=data["message"],
                        parents=data["parents"],
+                       branches=data["branches"],
                        **gerrit_data)
       c.put()
       return data["id"]
