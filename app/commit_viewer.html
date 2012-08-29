@@ -1,310 +1,27 @@
+<!--
+This file contains a wrapper to search for a commit's summary view. Most of
+the important functions are contained in commit_view.html
+-->
+
 <html>
 <head>
 <title> Commit Viewer </title>
 <link rel="stylesheet" type="text/css" href="/css/main.css"/>
 
-<!-- The majority of our javascript -->
 <script type="text/javascript" src="/js/jstree/_lib/jquery.js"></script>
-<script type="text/javascript" src="/js/jstree/jquery.jstree.js"></script>
-<link rel="stylesheet" type="text/css" href="/js/jquery-ui/css/smoothness/jquery-ui-1.8.21.custom.css" />
-<script type="text/javascript" src="/js/jquery-ui/js/jquery-ui-1.8.21.custom.min.js"></script>
-<script type="text/javascript" src="/js/json2.js"></script>
-
-<!-- our js utils file, shared with index.html -->
-<script type="text/javascript" src="/js/utils.js"></script>
-
-<!-- the AJAX API for google charts -->
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+
 <script type="text/javascript">
+
+// We load this here as well as in commit_view.html to avoid errors
 google.load('visualization', '1.0', {'packages':['corechart', 'table']});
-
-
-function ChartFillerCaller(input) {
-  input = input.split(',');
-  var metric = input[0];
-  var config = input[1];
-  var filename = input[2];
-  var commit = input[3];
-  var baseline = input[4];
-
-  ChartFiller(metric, config, filename, commit, baseline);
-}
-
-
-// ----------------------------------------------------------------------------
-function ChartFiller(metric, config, file, commit, baseline) {
-  var dist_responses = new Array();
-  var bar_responses = new Array();
-
-  // Wait until all data is fetched to generate graphs
-  $(document).ajaxStop(function() {
-    $(this).unbind("ajaxStop");
-    if (dist_responses.length > 0) {
-      drawChart(dist_responses);
-    }
-
-    if (bar_responses.length > 0) {
-      drawChart2(bar_responses);
-    }
-  });
-
-  // Add the baseline to the list of commits, if one is set
-  var commits = [commit, baseline];
-
-  // one series per commit
-  if (bar_responses.length == 0 && !is_distortion(metric))
-    for (var t = 0; t < commits.length; t++)
-      bar_responses[t] = new Array();
-
-  for (var t = 0; t < commits.length; t++) {
-
-    // We put together a url
-    var commit = commits[t];
-    metricurl = "/metric-data/" + metric + "/" + config + "/" + file + "/" + commit
-
-    // pretty-up commit hash
-    if (commit === baseline)
-      commit = commit.slice(0,9) + " (Baseline)";
-    else
-      commit = commit.slice(0,9);
-
-    // Build a more readable version of the series name
-    var series_name = []
-
-    if (is_distortion(metric)) {
-      series_name.push(commit);
-      series_name = {label: series_name.join(" "), commit: commit};
-      FetchMetric(metricurl, series_name, dist_responses);
-    } else {
-      series_name.push(file);
-      series_name = {label: series_name.join(" "), commit: commit};
-      FetchMetric(metricurl, series_name, bar_responses[t]);
-    }
-  }
-}
-
-
-function drawChart(data_in) {
-  var numCurves = data_in.length;
-  var view;
-  var data2;
-
-  // We have at least one curve
-  data_in1 = data_in[0].response;
-
-  var data1 = new google.visualization.DataTable();
-  data1.addColumn('number', 'Bitrate');
-  data1.addColumn('number', 'target bitrate');
-  data1.addColumn('number', data_in[0].series_name.label);
-  data1.addRows(data_in1.data);
-  view = new google.visualization.DataView(data1);
-
-  for (var i = 1; i < numCurves; i++){
-    data_in2 = data_in[i].response.data;
-    data2 = new google.visualization.DataTable();
-    data2.addColumn('number', 'Bitrate');
-    data2.addColumn('number', 'target bitrate');
-    data2.addColumn('number',  data_in[i].series_name.label);
-
-    data2.addRows(data_in2);
-
-    // Join the two tables into one view
-    leftColumns = range(2, i + 1);
-    view = new google.visualization.data.join(view, data2, 'full', [[0,0], [1,1]], leftColumns, [2]);
-
-  }
-
-  // Set chart options
-  var chartOptions = {title:'Rate Distortion Curves',
-                 width: 750,
-                 height: 530,
-                 vAxis: {title: data_in1.yaxis},
-                 hAxis: {title: 'Bitrate'},
-                 'pointSize':2,
-                 'lineWidth':1,
-                 'interpolateNulls':true,
-                };
-  var tableOptions = {width: 'automatic'};
-
-  // We filter out target_bitrate for the sake of the chart
-  chart_view = new google.visualization.DataView(view);
-  chart_view.hideColumns([1]);
-
-  // Instantiate and draw our chart, passing in some options.
-  var chart = new google.visualization.LineChart(document.getElementById("chartdialog"));
-  chart.draw(chart_view, chartOptions);
-  $('#chartdialog').dialog({height: 600, width: 800}).dialog('open');
-
-  // Add our selection handler.
-  google.visualization.events.addListener(chart, 'select', selectHandler);
-
-  // The selection handler.
-  function selectHandler() {
-    var selection = chart.getSelection();
-    chart.setSelection();
-    for (var i = 0; i < selection.length; i++) {
-      var item = selection[i];
-      var commits = new Array();
-      var baseline = '';
-
-      // If we click on a data point
-      if (item.column != null && item.row != null) {
-        var metric = data_in[item.column - 1].metric;
-        var config = data_in[item.column - 1].config;
-        var filename = data_in[item.column - 1].filename;
-        var commit = data_in[item.column - 1].commit;
-        var bitrate = view.getValue(item.row, 1);
-
-        // We need metric, file, config, and commit for this data point
-        var url = metric + "/" + config + '/' + filename + '/' + commit + '/' +
-                  bitrate;
-
-        //$("#configInfo").dialog('close');
-        //$("#configInfo").html("Loading...");
-        //$("#configInfo").load("/config-info/" + url);
-        //$('#configInfo').dialog('open');
-      }
-
-    }
-  }
-}
-
-
-
-function drawChart2(data_in) {
-  // We make a candlestick chart
-
-  function find_min_avg_max(arr) {
-    var min_ele = arr[0];
-    var max_ele = arr[0];
-    var sum = 0;
-    var count = 0;
-    for (var k = 0; k < arr.length; k++) {
-      count += 1;
-      sum += arr[k];
-      if (arr[k] < min_ele)
-        min_ele = arr[k];
-      else if (arr[k] > max_ele)
-        max_ele = arr[k];
-    }
-    // we assume arr.length >= 1
-    return [min_ele, sum/count, sum/count, max_ele];
-  }
-
-  var mat = [[]]
-
-  // series labels, one per commit
-  mat[0][0] = "unused";
-  for (var series = 0; series < data_in.length; series++) {
-    var series_name = data_in[series][0].series_name;
-    for (var i = 0; i<4; i++)
-      mat[0][series*4 + i + 1] = series_name.commit;
-  }
-
-  // one table row per file
-  for (var rowidx = 0; rowidx < data_in[0].length; rowidx++) {
-    var row_label = data_in[0][rowidx].series_name.label;
-    var row = new Array(row_label);
-
-    // four columns per series (commit)
-    for (var series = 0; series < data_in.length; series++) {
-      var series_data = data_in[series][rowidx].response.data;
-      var comparr = [];
-      for (var i = 0; i < series_data.length; i++) {
-        comparr[i] = series_data[i][0];
-      }
-      row = row.concat(find_min_avg_max(comparr));
-    }
-    mat[rowidx+1] = row;
-  }
-
-  // Convert to a data table and format for display
-  var formatter = new google.visualization.NumberFormat(
-      {fractionDigits: 3});
-  var data1 = new google.visualization.arrayToDataTable(mat, false);
-  for (var i = 1; i < mat[1].length; i++)
-      formatter.format(data1, i);
-  view = new google.visualization.DataView(data1);
-
-  // Set chart options
-  var chartOptions = {title:'Performance',
-                 width: 750,
-                 height: 530,
-                 vAxis: {title: data_in[0][0].response.yaxis},
-                };
-  var tableOptions = {width: 'automatic'};
-
-  // Instantiate and draw our chart, passing in some options.
-  var chart2 = new google.visualization.CandlestickChart(document.getElementById("chartdialog"));
-  chart2.draw(view, chartOptions);
-  $('#chartdialog').dialog('open');
-
-  // We now add a function to resize the chart when the page is resized
-  $(window).resize(function() {
-    chart2.draw(view, chartOptions);
-  });
-
-  // Add our selection handler.
-  google.visualization.events.addListener(chart2, 'select', selectHandler);
-
-  // The selection handler.
-  function selectHandler() {
-    var selection = chart2.getSelection();
-    chart2.setSelection();
-
-    for (var i = 0; i < selection.length; i++) {
-      var item = selection[i];
-      var commits = new Array();
-      var baseline = '';
-
-      // If we click on a data point
-      if (item.column != null && item.row != null) {
-        var commit_start = view.getColumnLabel(item.column).slice(0,9);
-        var filename = view.getValue(item.row, 0);
-        var commit;
-        var metric;
-        var config;
-
-        // Is there a better way of corresponding points and thier set-ups?
-        for (var j = 0; j < data_in.length; j++) {
-          // here data_in[j] is an array of objects - each array being one commit
-          for (var k = 0; k < data_in[j].length; k++){
-            var obj = data_in[j][k];
-            if (obj.commit.slice(0,9) === commit_start){
-              metric = obj.metric;
-              commit = obj.commit;
-              config = obj.config;
-              break;
-            }
-          }
-        }
-
-        // We need metric, file, config, and commit for this data point
-        var url = metric + "/" + config + '/' + filename + '/' + commit + '/' + '';
-
-        //$("#configInfo").dialog('close');
-        //$("#configInfo").html("Loading...");
-        //$("#configInfo").load("/config-info/" + url);
-        //$('#configInfo').dialog('open');
-      }
-    }
-  }
-}
-
-
-$(function() {
-  $("#chartdialog").dialog({ autoOpen: false, width: 800, height: 600  });
-});
-
-
-// ----------------------------------------------------------------------------
 
 
 function searchcommits(form){
   var commitid = form.query.value;
 
   // We send a request to the backend to see if it is a valid commit
-  var url = "/commit_viewer/id/" + commitid;
+  var url = "/commit_viewer/" + commitid;
   $.ajax({
     type: "GET",
     url: url,
@@ -326,17 +43,12 @@ function searchcommits(form){
 <body>
 <h2> Commit Viewer </h2>
 
-
 <div id="search">
 Please enter a commit to display:
 <form name="myform" action="">
 <input type='text' name='query' />
 <input type='button' id="submitButton" value="Search" onClick="javascript: searchcommits(this.form)">
 </form>
-
-</div>
-
-<div id="chartdialog">
 </div>
 
 <div id="searchResults">
