@@ -1,0 +1,12 @@
+/* This contains css relevant only to the commit viewer */
+
+#mainbody {
+  border-style: solid;
+  border-width: 2px;
+  border-color: #ccc;
+  -webkit-border-radius: 10px;
+  -moz-border-radius: 10px;
+  border-radius: 10px;
+  margin-bottom: 5px;
+  padding: 4px;
+}
