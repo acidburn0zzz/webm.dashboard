@@ -493,12 +493,14 @@ Back to Dashboard
 <div id="rightCol" style="float: left; width: 50%">
 {% for e in runs %}
   {% if e.color == 'red' %}
-  <p style="color: red;" onclick='{{e.clickcommand}}'>
+  <p class="redrow" onclick='{{e.clickcommand}}'>
+  <span class="ui-icon ui-icon-arrowthick-1-s" style="float:left"></span>
   {{ e.metric }}, {{ e.config }}, {{ e.filename }}, {{e.value}}
   </p>
 
   {% else %}
-  <p style="color: green;" onclick='{{e.clickcommand}}'>
+  <p class="greenrow" onclick='{{e.clickcommand}}'>
+  <span class="ui-icon ui-icon-arrowthick-1-n" style="float:left"></span>
   {{ e.metric }}, {{ e.config }}, {{ e.filename }}, {{e.value}}
   </p>
   {% endif %}

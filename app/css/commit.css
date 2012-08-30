@@ -15,3 +15,21 @@
 #chartdiv {
   position: relative;
 }
+
+p.redrow {
+  color: red;
+}
+p.redrow:hover {
+  text-decoration: underline;
+  color: red;
+  cursor : hand;
+}
+
+p.greenrow {
+  color: green;
+}
+p.greenrow:hover {
+  color: green;
+  text-decoration: underline;
+  cursor : hand;
+}
