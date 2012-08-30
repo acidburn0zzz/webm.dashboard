@@ -62,7 +62,8 @@ class DrilldownCommitCache(CachedDataView):
                          "commitSet" : subject,
                          "parents" : commitdata.parents,
                          "date" : commitdata.commit_time,
-                         "author" : commitdata.author }
+                         "author" : commitdata.author,
+                         "branches" : commitdata.branches }
         return commitdata
 
 @cache_result()
@@ -182,7 +183,14 @@ def commit_tree_formatter(commit_cache):
             change_node.add_child(gerrit_patch_node)
 
             # Add the change to the branch node
-            branch = change['branch']
+            branches = [change['branch']]
+            is_open = change['status'] == 'NEW'
+        else:
+            branches = patchdata['branches']
+            is_open = False
+            change_node = patch_node
+
+        for branch in branches:
             if branch not in branch_nodes:
                 logging.debug("built branch node %s"%branch)
                 branch_node = JSTreeNode(branch)
@@ -203,14 +211,14 @@ def commit_tree_formatter(commit_cache):
                 if user:
                     branch_mine_node = branch_node._children[2]
 
-            if change['status'] == 'NEW':
+            if is_open:
                 branch_open_node.add_child(change_node)
             else:
                 branch_closed_node.add_child(change_node)
             if user and email in patchdata["author"]:
                 branch_mine_node.add_child(change_node)
 
-        else:
+        if not branches:
             other_node.add_child(patch_node)
 
         # Is this also one of my nodes?
