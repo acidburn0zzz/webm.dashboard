@@ -25,6 +25,9 @@ handlers:
 - url : /analysis/.*
   script: analysis.py
 
+- url : /commit_viewer/.*
+  script: commit_view.py
+
 - url: .*
   script: main.py
 
