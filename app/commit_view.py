@@ -167,7 +167,7 @@ class CommitDisplayHandler(webapp.RequestHandler):
 def main_func():
     application = webapp.WSGIApplication([
         ('/commit_viewer/', CommitQueryHandler),
-        ('/commit_viewer/id/(.*)', CommitDisplayHandler),
+        ('/commit_viewer/(.*)', CommitDisplayHandler),
     ], debug=True)
     webapp_util.run_wsgi_app(application)
 
