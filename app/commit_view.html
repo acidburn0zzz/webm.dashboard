@@ -2,6 +2,7 @@
 <head>
 <title> Commit Summary </title>
 <link rel="stylesheet" type="text/css" href="/css/main.css"/>
+<link rel="stylesheet" type="text/css" href="/css/commit.css"/>
 
 <!-- The majority of our javascript -->
 <script type="text/javascript" src="/js/jstree/_lib/jquery.js"></script>
@@ -333,7 +334,14 @@ $(function() {
 // The majority of the html is below
 </script>
 
-<h3> Commit Summary : {{ commit.commitid }} </h3>
+<!-- header -->
+<div id="header">
+<div id="headerLeft">
+Commit Summary : {{ commit.commitid }}
+</div>
+</div>
+
+<div id="mainbody">
 
 <!-- divs for pop up dialogs -->
 <div id="chartdialog">
@@ -396,3 +404,13 @@ $(function() {
   {% endif %}
 {% endfor %}
 </div>
+
+<!-- end of mainbody -->
+<div class="clear"></div>
+</div>
+
+<!-- footer -->
+<div class="clear"></div>
+<div id="footer">
+<a href="http://webmproject.org" target="_blank"> The WebM Project </a>
+</div> <!-- end of footer -->

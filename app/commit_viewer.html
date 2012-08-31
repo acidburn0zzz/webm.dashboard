@@ -7,6 +7,7 @@ the important functions are contained in commit_view.html
 <head>
 <title> Commit Viewer </title>
 <link rel="stylesheet" type="text/css" href="/css/main.css"/>
+<link rel="stylesheet" type="text/css" href="/css/commit.css"/>
 
 <script type="text/javascript" src="/js/jstree/_lib/jquery.js"></script>
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
@@ -41,15 +42,15 @@ function searchcommits(form){
 
 </head>
 <body>
-<h2> Commit Viewer </h2>
 
 <div id="search">
-Please enter a commit to display:
-<form name="myform" action="">
+<div id="searchCommand" style="float:left">Please enter a commit to display:</div>
+<form name="myform" action="" style="float:left">
 <input type='text' name='query' />
 <input type='button' id="submitButton" value="Search" onClick="javascript: searchcommits(this.form)">
 </form>
 </div>
+<div class="clear"></div>
 
 <div id="searchResults">
 </div>
