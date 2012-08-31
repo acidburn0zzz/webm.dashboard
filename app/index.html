@@ -636,26 +636,32 @@ function drawTimeSeriesChart(data_in) {
   // The selection handler.
   // Loop through all items in the selection and concatenate
   // a single message from all of them.
+  var selected_commits = Array();
   function selectHandler() {
     var selection = chart.getSelection();
-    var commitid = '';
+    if(!selection.length)
+      selected_commits.length = 0;
+    else
     for (var i = 0; i < selection.length; i++) {
       var item = selection[i];
       if (item.row != null && item.column != null) {
-        commitid = view.getFormattedValue(item.row, 1);
+        selected_commits.push(view.getFormattedValue(item.row, 1));
       }
     }
 
-    if (commitid !== ''){
-      $("#commitInfo").dialog('close');
+    if (selected_commits.length){
       $("#commitInfo").html("Loading...");
-      $("#commitInfo").load("/commit-info/"+commitid+"/");
+      $("#commitInfo").load("/commit-info/"+selected_commits.join(",")+"/");
       $('#commitInfo').dialog('open');
     }
     else {
       $('#commitInfo').dialog('close');
     }
   }
+  $("#commitInfo").bind("dialogclose", function(event, ui) {
+    selected_commits.length = 0;
+    chart.setSelection();
+  });
 
 }
 
