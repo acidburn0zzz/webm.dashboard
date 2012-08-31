@@ -205,7 +205,14 @@ function initTree(divName, ContentsList, StateList){
 // Called when trees are updated (via drilldown)
 function resetTree(divName, ContentsList, StateList, OldStateList) {
   currentTree = $.jstree._reference(divName);
-  var openList = [];
+
+  if (!init && divName === "#treeView4") {
+    // If we are not making the tree for the first time, we reset our open list
+    openList.length = 0;
+  }
+  else if (init && divName === "#treeView4"){
+    init = false;
+  }
 
   if (currentTree){
     node = currentTree._get_node(currentTree.get_container());

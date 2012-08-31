@@ -37,6 +37,7 @@ from cache import cache_result, CachedDataView
 import curve_compare
 import model
 import util
+import urllib
 
 GERRIT_LINK_HTML=("<a target='_blank' href=\"https://gerrit.chromium.org/gerrit/"
                   "#q,%s,n,z\">%s</a>")
@@ -484,13 +485,54 @@ class AverageImprovementHandler(webapp.RequestHandler):
         else:
             self.get_adhoc_improvement(metrics, configs, filenames, commits)
 
+
+
+def development():
+    '''This function lets us determine if we are running on a local server or
+    the live version.'''
+    logging.info(os.environ['SERVER_SOFTWARE'])
+    if os.environ['SERVER_SOFTWARE'].find('Development') == 0:
+        return True
+    else:
+        return False
+
+
 class MainHandler(webapp.RequestHandler):
     def get(self):
+        devel = development()
+
         values = {
             "user": users.get_current_user(),
             "login_url": users.create_login_url("/"),
             "logout_url": users.create_logout_url("/")
         }
+        if devel:
+            values["development"] = True
+
+        self.response.out.write(template.render("index.html", values))
+
+
+class SharedMainHandler(webapp.RequestHandler):
+    '''This Handler provides a way of linking to specific dashboard views for
+    sharing with others.'''
+    def get(self, metrics, configs, filesets, commits, filenames, opentrees):
+        # Note that we also must keep track of which trees are open
+        devel = development()
+
+        values = {
+            "metrics": urllib.unquote(metrics),
+            "configs": urllib.unquote(configs),
+            "filesets": urllib.unquote(filesets),
+            "commits": urllib.unquote(commits),
+            "filenames": urllib.unquote(filenames),
+            "opentrees": urllib.unquote(opentrees),
+            "user": users.get_current_user(),
+            "login_url": users.create_login_url("/"),
+            "logout_url": users.create_logout_url("/")
+        }
+        if devel:
+            values["development"] = True
+
         self.response.out.write(template.render("index.html", values))
 
 class ChartHandler(webapp.RequestHandler):
@@ -697,6 +739,7 @@ def main():
         (r'/config-info/(.*)/(.*)/(.*)/(.*)/(.*)', ConfigInfoHandler),
         (r'/metric-data/(.*)/(.*)/(.*)/(.*)', CodecMetricHandler),
         (r'/average-improvement/(.*)/(.*)/(.*)/(.*)', AverageImprovementHandler),
+        ('/(.*)/(.*)/(.*)/(.*)/(.*)/(.*)', SharedMainHandler),
         ('/graph', ChartHandler)
     ], debug=True)
     webapp_util.run_wsgi_app(application)
