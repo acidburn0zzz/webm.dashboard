@@ -152,6 +152,10 @@ h3 {
     right: 0;
 }
 
+#status {
+    display: inline-block;
+    margin-left: 10%;
+}
 
 /* Hide the border when this widget is empty */
 #githistory:empty{

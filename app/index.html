@@ -87,7 +87,7 @@ function FetchMetric(metricurl, series_name, responses) {
                       filename: split_lst[4], commit: split_lst[5]});
     },
     error: function(xhr, ajaxOptions, thrownError) {
-        //$("#chartdiv").html("WHAA");
+        // Nothing for now
     },
   });
 }
@@ -99,7 +99,6 @@ function ChartFiller(baseline) {
 
   var queryNum = MetricState.length * ConfigState.length *
                  FileTableState.length * CommitState.length;
-  //$('#tabs3').html(queryNum);
 
   // A loading image
   $('#chartdiv').html("<img src='/images/ajax-loader.gif' alt='Loading...' style='display:block; margin:auto;'>");
@@ -146,6 +145,7 @@ function ChartFiller(baseline) {
         if (files[k].slice(0, 8) === 'OVERALL:') {
           if (queryNum == 1) {
             $('#chartdiv').html("Please select a file (or files) to view graph.");
+            $('#status').html("");
             $('#tabs2').html("");
           }
           $("#commitInfo").dialog('close');
@@ -304,6 +304,7 @@ function ImprovementTable(data_in) {
   $("#commitInfo").dialog('close');
   $("#configInfo").dialog('close');
   $('#chartdiv').html("Please select a file (or files) to view graph.");
+  $('#status').html("");
 
   // We add some bindings to allow for selecting rows of the table
   // Add our selection handler
@@ -355,6 +356,7 @@ function ImprovementTable(data_in) {
       $("#commitInfo").dialog('close');
       $("#configInfo").dialog('close');
       $('#chartdiv').html("Please select a file (or files) to view graph.");
+      $('#status').html("");
       $('#tabs2').html("");
     }
   }
@@ -423,16 +425,20 @@ function drawChart(data_in) {
   // Instantiate and draw our chart, passing in some options.
   var chart = new google.visualization.LineChart(document.getElementById("chartdiv"));
   var table = new google.visualization.Table(document.getElementById("tabs2"));
+
+  // Add our handlers.
+  google.visualization.events.addListener(chart, 'select', selectHandler);
+  google.visualization.events.addListener(chart, 'onmouseover', chartMouseOver);
+
   chart.draw(chart_view, chartOptions);
   table.draw(view, tableOptions);
 
   // We now add a function to resize the chart when the page is resized
   $(window).resize(function() {
-    chart.draw(view, chartOptions);
+    chart.draw(chart_view, chartOptions);
+    statusbar = document.getElementById('status');
+    statusbar.style.display = 'none';
   });
-
-  // Add our selection handler.
-  google.visualization.events.addListener(chart, 'select', selectHandler);
 
   // The selection handler.
   function selectHandler() {
@@ -480,6 +486,85 @@ function drawChart(data_in) {
       }
 
     }
+  }
+
+  function chartMouseOver(e){
+    pointDifference(e.row, e.column)
+  }
+
+  function pointDifference(row, col){
+    // ported over from visualmetrics.py
+    if(!row || !col)
+      return;
+
+    var cols = chart_view.getNumberOfColumns();
+    var rows = chart_view.getNumberOfRows();
+
+    var sel_bitrate = chart_view.getValue(row, 0 );
+    var sel_metric = chart_view.getValue(row, col);
+
+    var message = "At " + sel_metric.toFixed(2) + " decibels, <em>"
+    message = message + chart_view.getColumnLabel(col) + "</em> is <ul>"
+
+    for( var i=1;i<cols;++i){
+
+      var metric_greatest_thats_less = 0;
+      var rate_greatest_thats_less = 0;
+      var metric_smallest_thats_greater = 999;
+      var rate_smallest_thats_greater = 0;
+
+      if(i==col)
+        continue;
+
+      // find the lowest metric for this column thats greater than sel_metric and
+      // the highest metric for this column thats less than the metric
+      for(var line_count = 0; line_count < rows; ++line_count) {
+        this_metric = chart_view.getValue(line_count, i)
+        this_rate = chart_view.getValue(line_count, 0)
+        if(!this_metric)
+          continue;
+
+        if(this_metric > metric_greatest_thats_less &&
+           this_metric < sel_metric) {
+          metric_greatest_thats_less = this_metric;
+          rate_greatest_thats_less = this_rate;
+        }
+        if(this_metric < metric_smallest_thats_greater &&
+          this_metric > sel_metric) {
+          metric_smallest_thats_greater = this_metric;
+          rate_smallest_thats_greater = this_rate;
+        }
+      }
+
+      if(rate_smallest_thats_greater == 0 || rate_greatest_thats_less == 0) {
+        message = message + " <li> Couldn't find a point on both sides.</li>"
+      }
+      else
+      {
+        metric_slope = ( rate_smallest_thats_greater - rate_greatest_thats_less) /
+            ( metric_smallest_thats_greater - metric_greatest_thats_less);
+
+        projected_rate = ( sel_metric - metric_greatest_thats_less) *
+            metric_slope + rate_greatest_thats_less;
+
+        difference = 100 * (projected_rate / sel_bitrate - 1);
+
+
+        if (difference > 0)
+          message = message + "<li>  " + difference.toFixed(2) +
+                    "% smaller than <em>" +
+                    chart_view.getColumnLabel(i) + "</em></li> "
+        else
+          message = message + "<li>  " + -difference.toFixed(2) +
+                    "% bigger than <em>" +
+                    chart_view.getColumnLabel(i) + "</em></li> "
+      }
+
+    }
+    message = message + "</ul>"
+    statusbar = document.getElementById('status');
+    statusbar.innerHTML = "<p>" + message + "</p>";
+    statusbar.style.display = 'block';
   }
 
 }
@@ -899,6 +984,7 @@ class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-arrowthick-2-n-s"></d
       <div id="container">
       <div id="dummy"></div>
       <div id="chartdiv"></div>
+      <div id="status"> </div>
       </div>
 
     </div>
