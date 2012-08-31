@@ -11,3 +11,7 @@
   margin-top: 5px;
   padding: 4px;
 }
+
+#chartdiv {
+  position: relative;
+}
