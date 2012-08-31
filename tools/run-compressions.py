@@ -12,8 +12,10 @@ import urllib2
 
 METRIC_POST_URL = "http://%s/import-codec-metrics"
 FILESET_POST_URL = "http://%s/import-filesets"
+JENKINS_BUILD_URL = "http://build.webmproject.org/jenkins/job/encode-build/build"
 LONG_OPTIONS = ["shard=", "shards=", "build", "src-path=", "bin-path=",
-                "vid-path=", "host=", "update-filesets"]
+                "vid-path=", "host=", "update-filesets", "commit=",
+                "remote", "token="]
 
 def Usage(selfname):
   print "Usage: %s [options] <config ...> <fileset ...>"%selfname
@@ -25,10 +27,13 @@ def Usage(selfname):
   print "  --bin-path=path  path to built binaries"
   print "  --vid-path=path  path to input videos"
   print "  --host=host:port dashboard server to upload to"
+  print "  --commit=sha1    commit id to use"
+  print "  --token=token    auth token to use with Jenkins"
   print
   print "Commands:"
   print "  --build            create executables only"
   print "  --update-filesets  update fileset definitions on server"
+  print "  --remote           trigger a remote build/compress"
 
 FILES = {
   'akiyo_cif.y4m': {'frames': 300},
@@ -237,9 +242,7 @@ def Build(runs, src_path, bin_path):
       RunCommand(['cp', srcfile, outfile])
 
 
-def Encode(runs, host, bin_path, src_path, vid_path):
-  records = []
-
+def GetCommit(src_path):
   # Get commit
   git_env = {'GIT_DIR': os.path.join(src_path, ".git"),
              'GIT_WORK_TREE': src_path,
@@ -247,7 +250,12 @@ def Encode(runs, host, bin_path, src_path, vid_path):
   RunCommand(['git', 'diff', '--quiet', 'HEAD'], env=git_env)
   commit = RunCommand(['git', 'rev-parse', 'HEAD'], stdout=True, env=git_env)
   commit = commit.strip()
-  assert commit
+  return commit
+
+def Encode(runs, host, bin_path, commit, vid_path):
+  records = []
+
+  assert len(commit) == 40
 
   for run in runs:
     # Prepare
@@ -309,6 +317,19 @@ def UpdateFilesets(host):
   response = urllib2.urlopen(request)
 
 
+def TriggerBuild(token, commit, args):
+  assert len(commit) == 40
+  trigger={'parameter': [
+    {'name': 'commit', 'value': commit},
+    {'name': 'run_params', 'value': " ".join(args)},
+  ]}
+
+  data = {'json': json.dumps(trigger), 'token': token}
+  data = urllib.urlencode(data)
+  request = urllib2.Request(JENKINS_BUILD_URL, data)
+  response = urllib2.urlopen(request)
+
+
 def main(argv):
   # Parse arguments
   options = {"--shard": 0, "--shards": 1, "--src-path": ".", "--bin-path": ".",
@@ -334,11 +355,21 @@ def main(argv):
           bin_path=options['--bin-path'])
   elif '--update-filesets' in options:
     UpdateFilesets(host=options['--host'])
+  elif '--remote' in options:
+    if '--commit' in options:
+      commit = options['--commit']
+    else:
+      commit = GetCommit(src_path=options['--src-path'])
+    TriggerBuild(token=options['--token'], commit=commit, args=args)
   else:
+    if '--commit' in options:
+      commit = options['--commit']
+    else:
+      commit = GetCommit(src_path=options['--src-path'])
     Encode(SelectRuns(args, shard, shards),
            host=options['--host'],
            bin_path=options['--bin-path'],
-           src_path=options['--src-path'],
+           commit=commit,
            vid_path=options['--vid-path'])
 
 if __name__ == "__main__":
