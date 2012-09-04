@@ -50,7 +50,6 @@ def get_adhoc_improvement(metrics, configs, filenames, commits):
         parent_str = "None found"
 
     result = []
-    commit_cache = model.commits()
 
     metrics = util.field_list(metrics)
     configs = util.field_list(configs)
@@ -74,7 +73,6 @@ def get_adhoc_improvement(metrics, configs, filenames, commits):
             baseline_data = main.fetch_metric_for_fileset(m, cfg, filenames,
                                                           parent)
             for cm in commits:
-                cmdata = commit_cache[cm]
                 col = [] # Each m, cfg, cm combination will be a column in
                          # the table
                 average, results = main.calculate_improvement(
