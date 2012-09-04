@@ -408,6 +408,7 @@ function drawChart2(data_in) {
 
 $(function() {
   $("#chartdialog").dialog({ autoOpen: false});
+  $("#thresholdDialog").dialog({ autoOpen: false});
   $("#configInfo").dialog({ autoOpen: false, width: 800, position: ['right','top']  });
   google.load('visualization', '1.0', {'packages':['corechart', 'table']});
 
@@ -422,7 +423,7 @@ $(function() {
 <!-- header -->
 <div id="header">
 <div id="headerLeft">
-Commit Summary : {{ commit.commitid }}
+Commit Summary : {{ commit.commit }}
 </div>
 
 <div id="headerRight">
@@ -491,8 +492,37 @@ Back to Dashboard
 </div>
 
 <div id="rightCol" style="float: left; width: 50%">
-Threshold: {{threshold}}%
+Threshold: {{threshold}}% <input type="button" value="Change" onclick="openThresholdDialog()"/>
 <br>
+
+<div id="thresholdDialog"> Please choose a new threshold:
+<form id="thform" name="thform" onsubmit="submitThreshold()" style="float:left">
+<input type='text' name='newThreshold' />
+<input type='button' value="Submit" onclick="submitThreshold()">
+</form>
+</div>
+<script>
+
+function openThresholdDialog() {
+  $('#thresholdDialog').dialog('open');
+}
+
+function submitThreshold() {
+    // We take only parts of the input that make sense
+    var threshold = parseFloat(thform.newThreshold.value);
+
+    if (isNaN(threshold)){
+      alert("Not a number; please try again");
+      $('#thform')[0].reset();
+      return;
+    }
+    var commit = "{{commit.commitid}}";
+    url = "/commit_viewer/" + commit + "/" + threshold;
+    window.location = url;
+};
+
+</script>
+
 
 {% for e in runs %}
   {% if e.color == 'red' %}
