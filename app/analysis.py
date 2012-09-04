@@ -106,6 +106,19 @@ def percent_improvement_reduce(key, values):
             if not imp:
                 # Discontinuity
                 abs_imp = 1.0
+            elif metrics[metric].distortion:
+                # avg_imp gives the multiplier to get the bitrate for
+                # the same quality. For example, the same quality at half the
+                # bitrate is 0.5. Same quality at twice the bitrate is -1.0.
+                # so, B1 = B0 * (1 - bavg_imp)
+                #
+                # abs_imp is directly related to abs_br. If the abs_br for
+                # the same quality since the beginning of time is 0.5, then
+                # the resulting improvement is 1.5 (1.0 = no improvement)
+                avg_imp = sum(imp) / len(imp)
+                abs_br = (2.0 - abs_imp)
+                abs_br *= (1.0 - avg_imp)
+                abs_imp = (2.0 - abs_br)
             else:
                 avg_imp = sum(imp) / len(imp) + 1.0
                 abs_imp *= avg_imp
