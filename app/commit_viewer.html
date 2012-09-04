@@ -22,7 +22,7 @@ function searchcommits(form){
   var commitid = form.query.value;
 
   // We send a request to the backend to see if it is a valid commit
-  var url = "/commit_viewer/" + commitid;
+  var url = "/commit_viewer/" + commitid + '/';
   $.ajax({
     type: "GET",
     url: url,

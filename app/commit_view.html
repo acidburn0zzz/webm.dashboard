@@ -491,6 +491,9 @@ Back to Dashboard
 </div>
 
 <div id="rightCol" style="float: left; width: 50%">
+Threshold: {{threshold}}%
+<br>
+
 {% for e in runs %}
   {% if e.color == 'red' %}
   <p class="redrow" onclick='{{e.clickcommand}}'>

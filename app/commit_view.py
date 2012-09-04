@@ -27,69 +27,72 @@ import main
 import drilldown
 import logging
 
-
 # A global variable to determine how important a test run is (percent improvement)
 THRESHOLD = 2.0
-
 
 class CommitQueryHandler(webapp.RequestHandler):
     def get(self):
         self.response.out.write(template.render("commit_viewer.html", {}))
 
-class AverageDisplayHandler():
-    def get_adhoc_improvement(self, metrics, configs, filenames, commits):
-        # Mostly copied from main.py with some notable changes
-        response = []
+@cache_result()
+def get_adhoc_improvement(metrics, configs, filenames, commits):
+    # Mostly copied from main.py with some notable changes
+    response = []
 
-        # Find the baseline based on the raw URL variables
-        parent = main.find_baseline(metrics, configs, filenames, commits)
-        # We format the end of the table with extra info
-        if parent:
-            parent_str = parent[:9]
+    # Find the baseline based on the raw URL variables
+    parent = main.find_baseline(metrics, configs, filenames, commits)
+    # We format the end of the table with extra info
+    if parent:
+        parent_str = parent[:9]
+    else:
+        parent_str = "None found"
+
+    result = []
+    commit_cache = model.commits()
+
+    metrics = util.field_list(metrics)
+    configs = util.field_list(configs)
+    fileset = filenames
+    filenames = util.filename_list(filenames)
+    commits = util.field_list(commits)
+
+    # Fix for the case that a commit in commits has no parent
+    # In this case we choose the oldest commit as the parent, ie the one
+    # without a parent.
+    if not parent:
+        parent = commits[-1]
+
+    for m in metrics:
+        if model.metrics()[m].distortion:
+            improvement = main.rd_improvement
         else:
-            parent_str = "None found"
+            improvement = main.mean_improvement
 
-        result = []
-        commit_cache = model.commits()
-
-        metrics = util.field_list(metrics)
-        configs = util.field_list(configs)
-        fileset = filenames
-        filenames = util.filename_list(filenames)
-        commits = util.field_list(commits)
-
-        # Fix for the case that a commit in commits has no parent
-        # In this case we choose the oldest commit as the parent, ie the one
-        # without a parent.
-        if not parent:
-            parent = commits[-1]
-
-        for m in metrics:
-            if model.metrics()[m].distortion:
-                improvement = main.rd_improvement
-            else:
-                improvement = main.mean_improvement
-
-            for cfg in configs:
-                baseline_data = main.fetch_metric_for_fileset(m, cfg, filenames,
-                                                              parent)
-                for cm in commits:
-                    cmdata = commit_cache[cm]
-                    col = [] # Each m, cfg, cm combination will be a column in
-                             # the table
-                    average, results = main.calculate_improvement(
-                        m, cfg, filenames, cm, baseline_data, improvement)
-                    for f, composite in results.iteritems():
-                        col.append([f, composite])
-                        response.append({'metric': m, 'config': cfg, 'baseline': parent,
-                                         'filename': f, 'value': composite})
-
+        for cfg in configs:
+            baseline_data = main.fetch_metric_for_fileset(m, cfg, filenames,
+                                                          parent)
+            for cm in commits:
+                cmdata = commit_cache[cm]
+                col = [] # Each m, cfg, cm combination will be a column in
+                         # the table
+                average, results = main.calculate_improvement(
+                    m, cfg, filenames, cm, baseline_data, improvement)
+                for f, composite in results.iteritems():
+                    col.append([f, composite])
                     response.append({'metric': m, 'config': cfg, 'baseline': parent,
-                                     'filename': fileset, 'value': average})
-        return response
+                                     'filename': f, 'value': composite})
+
+                response.append({'metric': m, 'config': cfg, 'baseline': parent,
+                                 'filename': fileset, 'value': average})
+    return response
 
 class CommitDisplayHandler(webapp.RequestHandler):
-    def get(self, commit):
+    def get(self, commit, optThreshold):
+
+        if not optThreshold:
+            threshold = THRESHOLD  # Go back to default if none given
+        else:
+            threshold = float(optThreshold)
 
         # We start by seeing if its a valid commit
         indexes = model.CodecMetricIndex.all(keys_only = True)
@@ -129,18 +132,17 @@ class CommitDisplayHandler(webapp.RequestHandler):
                         continue
                     available_metrics.append((m, c, f))
 
-        AveHandler = AverageDisplayHandler()
         resps = []
         for (m, c, f) in available_metrics:
             if f[0] == '~' and f != '~All':
-                resp = AveHandler.get_adhoc_improvement(m, c, f, commitid)
+                resp = get_adhoc_improvement(m, c, f, commitid)
                 resps += resp
 
         # Now that we have our responses, we can format them by seeing if
         # the value crosses our threshold
         formatted_resps = []
         for row in resps:
-            if abs(row['value']) > THRESHOLD:
+            if abs(row['value']) > threshold:
                 if row['metric'] == 'Time(us)' or row['metric'] == 'Bitrate':
                     continue
                 if row['filename'][0] == '~':
@@ -160,14 +162,17 @@ class CommitDisplayHandler(webapp.RequestHandler):
                                       row['baseline'].encode('ascii', 'ignore') + "\'"+ ')')
                 formatted_resps.append(row)
 
+        formatted_resps = sorted(formatted_resps, key=lambda row: row['value'])
+
         html = template.render("commit_view.html", {'commit': commit,
-                                                    'runs': formatted_resps})
+                                                    'runs': formatted_resps,
+                                                    'threshold': threshold})
         self.response.out.write(html)
 
 def main_func():
     application = webapp.WSGIApplication([
         ('/commit_viewer/', CommitQueryHandler),
-        ('/commit_viewer/(.*)', CommitDisplayHandler),
+        ('/commit_viewer/(.*)/(.*)', CommitDisplayHandler),
     ], debug=True)
     webapp_util.run_wsgi_app(application)
 
