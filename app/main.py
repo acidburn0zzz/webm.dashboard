@@ -539,6 +539,34 @@ class ChartHandler(webapp.RequestHandler):
     def get(self):
         self.response.out.write(template.render("graph.html", {}))
 
+
+@cache_result()
+def build_history(commit, visited=set()):
+    to_visit = [commit]
+    history = []
+    while(to_visit):
+        commit = to_visit.pop(0)
+        if commit not in visited:
+            visited.add(commit)
+            history.insert(0, commit)
+            commit = model.commits()[commit]
+            to_visit.extend(commit.parents)
+    return history
+
+
+@cache_result()
+def initial_visited(c1):
+    visited=set()
+    while c1:
+        c1 = model.commits()[c1]
+        visited.update(c1.parents)
+        if c1.parents:
+            c1 = c1.parents[0]
+        else:
+            break
+    return visited
+
+
 class CommitInfoHandler(webapp.RequestHandler):
     '''This hander is used to get all the information regarding a set of
     commits and their baseline commit.'''
@@ -551,8 +579,23 @@ class CommitInfoHandler(webapp.RequestHandler):
             baseline = False
 
         commits = util.field_list(commits)
-        formatted = []
+
+        # Look up the commit data for these commits
+        selected_commits = {}
         for commit in commits:
+            if commit not in selected_commits:
+                selected_commits[commit] = model.commits()[commit]
+
+        # Sort in topological order
+        commits = sorted(selected_commits.keys(),
+                         key=lambda x: selected_commits[x].depth, reverse=True)
+
+        visited = initial_visited(commits[-1])
+        history = build_history(commits[0], visited)
+        history.reverse()
+
+        formatted = []
+        for commit in history:
             commit_data = model.commits()[commit]
             message = commit_data.message.split("\n")
             nonempty_lines = sum(map(bool, message))
@@ -648,29 +691,6 @@ class ConfigInfoHandler(webapp.RequestHandler):
         self.response.out.write(html)
 
 class HistoryHandler(webapp.RequestHandler):
-    def build_history(self, commit, visited=set()):
-        to_visit = [commit]
-        history = []
-        while(to_visit):
-            commit = to_visit.pop()
-            if commit not in visited:
-                visited.add(commit)
-                history.insert(0, commit)
-                commit = model.commits()[commit]
-                to_visit.extend(commit.parents)
-        return history
-
-    def initial_visited(self, c1):
-        visited=set()
-        while c1:
-            c1 = model.commits()[c1]
-            visited.update(c1.parents)
-            if c1.parents:
-                c1 = c1.parents[0]
-            else:
-                break
-        return visited
-
     def get(self, commits):
         def gerrit_link(m):
             return GERRIT_LINK_HTML%(m.group(0), m.group(0))
@@ -689,9 +709,9 @@ class HistoryHandler(webapp.RequestHandler):
         visited = set(commits[:1])
         for commit in commits:
             if commit in visited:
-                visited = self.initial_visited(commit)
+                visited = initial_visited(commit)
 
-        history = [self.build_history(c, set(visited)) for c in commits]
+        history = [build_history(c, set(visited)) for c in commits]
         #self.response.out.write("\n".join(map(str, history)))
 
         history = sorted(history, key=lambda x:len(x))

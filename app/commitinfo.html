@@ -1,51 +1,39 @@
 <h4> Commits </h4>
-<table width="100%">
+<div id="accordion">
     {% for commit in commits %}
-    <tr id="{{commit.commit}}_row">
-        <td width="10em">{{ commit.commit }}</td>
-        <td>{{ commit.date }}</td>
-    </tr>
-    <tr id="{{commit.commit}}_row2">
-        <td width="10em"></td>
-        <td>{{ commit.author }}</td>
-    </tr>
-    <tr id="{{commit.commit}}_row3">
-        <td width="10em"></td>
-        <td>
-            <div>{{ commit.subject }}</div>
-            <div id="{{commit.commit}}_body">
-                {% for line in commit.body %}
-                {{ line }}<br>
-                {% endfor %}
-            </div>
-        </td>
-    </tr>
+    <h3><a href="#">{{ commit.commit }} - {{ commit.subject }}</a></h3>
+    <div>
+        <dl>
+            <dt>Author</dt><dd>{{ commit.author }}</dd>
+            <dt>Date</dt><dd>{{ commit.date }}</dd>
+        </dl>
+        {% for line in commit.body %}
+        {{ line }}<br>
+        {% endfor %}
+    </div>
     {% endfor %}
-</table>
+</div>
+<script>
+  $('#accordion').accordion({ collapsible: true });
+</script>
 
 {% if baseline %}
 <h4> Baseline Commit </h4>
-<table width="100%">
-    <tr id="{{baseline.commit}}_row">
-        <td width="10em">{{ baseline.commit }}</td>
-        <td>{{ baseline.date }}</td>
-    </tr>
-    <tr id="{{baseline.commit}}_row2">
-        <td width="10em"></td>
-        <td>{{ baseline.author }}</td>
-    </tr>
-    <tr id="{{baseline.commit}}_row3">
-        <td width="10em"></td>
-        <td>
-            <div>{{ baseline.subject }}</div>
-            <div id="{{baseline.commit}}_body">
-                {% for line in baseline.body %}
-                {{ line }}<br>
-                {% endfor %}
-            </div>
-        </td>
-    </tr>
-</table>
+<div id="accordion-baseline">
+    <h3><a href="#">{{ baseline.commit }} - {{ baseline.subject }}</a></h3>
+    <div>
+        <dl>
+            <dt>Author</dt><dd>{{ baseline.author }}</dd>
+            <dt>Date</dt><dd>{{ baseline.date }}</dd>
+        </dl>
+        {% for line in baseline.body %}
+        {{ line }}<br>
+        {% endfor %}
+    </div>
+</div>
+<script>
+  $('#accordion-baseline').accordion();
+</script>
 
 <br>
 <a id="link" style="color:#aaa">Full Commit History Here</a>
