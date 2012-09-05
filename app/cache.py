@@ -9,6 +9,7 @@
 ##
 
 from google.appengine.api import memcache
+import logging
 
 def cache_result(key=None):
     """Decorator to cache the result of the function"""
@@ -26,7 +27,7 @@ def cache_result(key=None):
         return decorator
     return wrapper
 
-class CachedDataView(object):
+class LazyCachedDataView(object):
     """An abstract base class providing a memcache-backed view of a list
        of elements"""
     def __init__(self, keys):
@@ -47,19 +48,32 @@ class CachedDataView(object):
             self._data_valid = True
         return self.__data
 
-    def __iter__(self):
-        """Return a key,value iterator for all items in the view, with
-           early request and deferred response."""
-        data = self._data()
-
+    def _begin_get_missing(self, data):
         missing = []
         # Get a list of misses
         for key, value in data.iteritems():
             if value is None:
                 missing.append(key)
 
+        if missing:
+            logging.info("%s: fetching %d missing items"%(
+                         self.__class__.__name__, len(missing)))
+
         # Start the RPC to fill in the missing items
-        missing_rpc = self.begin_getitems(missing)
+        return self.begin_getitems(missing)
+
+    def _save(self, missing_data):
+        # Add the missing data to the cache
+        if missing_data:
+            self._cache.set_multi(missing_data, key_prefix=self._cache_prefix)
+
+    def __iter__(self):
+        """Return a key,value iterator for all items in the view, with
+           early request and deferred response."""
+        data = self._data()
+
+        # Start the RPC to fill in the missing items
+        missing_rpc = self._begin_get_missing(data)
 
         # Yield the items we do have first
         for key, value in data.iteritems():
@@ -72,9 +86,7 @@ class CachedDataView(object):
             missing_data[key] = value
             yield key, value
 
-        # Add the missing data to the cache
-        if missing_data:
-            self._cache.set_multi(missing_data, key_prefix=self._cache_prefix)
+        self._save(missing_data)
 
     def __getitem__(self, key):
         """Get a single item from the cache"""
@@ -97,7 +109,7 @@ class CachedDataView(object):
 
     def begin_getitem(self, key):
         """Start the request for a single item"""
-        return None
+        raise NotImplementedError
 
     def getitem(self, key, rpc=None):
         """Finalize the request for a single item"""
@@ -106,3 +118,27 @@ class CachedDataView(object):
     def __repr__(self):
         """Get a stable representation of the object, suitable for memcache"""
         return "%s(%s)"%(self.__class__.__name__, self._keys)
+
+class CachedDataView(LazyCachedDataView):
+    def __init__(self, keys):
+        super(CachedDataView, self).__init__(keys)
+
+        # Force a fetch of all missing items
+        data = self._data()
+        missing_rpc = self._begin_get_missing(data)
+        missing_data = {}
+        for key, value in self.getitems(self._keys, missing_rpc):
+            data[key] = value
+            missing_data[key] = value
+        self._save(missing_data)
+
+    def begin_getitems(self, keys):
+        """Called with a list of items that will be requested, so that the
+           RPC(s) can be started early."""
+        raise NotImplementedError
+
+    def getitems(self, keys, rpc):
+        """Finalize the outstanding RPCs started in begin_getitems()"""
+        for entity in rpc.get_result():
+            if entity:
+                yield entity.key().name(), entity

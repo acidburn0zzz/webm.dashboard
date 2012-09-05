@@ -46,25 +46,27 @@ def _split_filename(field):
     return result
 
 class DrilldownCommitCache(CachedDataView):
-    def begin_getitem(self, commit):
-        key = db.Key.from_path('Commit', commit)
-        return db.get_async(key)
+    def begin_getitems(self, commits):
+        keys = [db.Key.from_path('Commit', x) for x in commits]
+        return db.get_async(keys)
 
-    def getitem(self, commit, rpc):
-        commitdata = rpc.get_result()
-        if commitdata:
-            subject = commitdata.message.split("\n")[0]
-            changeid = re.search(r'Change-Id: ([I0-9a-f]+)', commitdata.message)
-            if changeid:
-                subject = "%s: %s"%(changeid.group(1)[:9], subject)
-            commitdata = {"displayname": "Patch Set %s (%s)"%(
-                              commitdata.gerrit_patchset_num, commit[:8]),
-                         "commitSet" : subject,
-                         "parents" : commitdata.parents,
-                         "date" : commitdata.commit_time,
-                         "author" : commitdata.author,
-                         "branches" : commitdata.branches }
-        return commitdata
+    def getitems(self, commits, rpc):
+        for commitdata in rpc.get_result():
+            if commitdata:
+                commit = commitdata.key().name()
+                subject = commitdata.message.split("\n")[0]
+                changeid = re.search(r'Change-Id: ([I0-9a-f]+)',
+                                     commitdata.message)
+                if changeid:
+                    subject = "%s: %s"%(changeid.group(1)[:9], subject)
+                commitdata = {"displayname": "Patch Set %s (%s)"%(
+                                  commitdata.gerrit_patchset_num, commit[:8]),
+                             "commitSet" : subject,
+                             "parents" : commitdata.parents,
+                             "date" : commitdata.commit_time,
+                             "author" : commitdata.author,
+                             "branches" : commitdata.branches }
+            yield commit, commitdata
 
 @cache_result()
 def metric_tree_formatter(metric_cache):

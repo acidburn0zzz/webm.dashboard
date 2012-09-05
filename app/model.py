@@ -28,9 +28,9 @@ class Metric(db.Model):
     yaxis = db.StringProperty()
 
 class MetricCache(CachedDataView):
-    def begin_getitem(self, metricname):
-        key = db.Key.from_path('Metric', metricname)
-        return db.get_async(key)
+    def begin_getitems(self, metricnames):
+        keys = [db.Key.from_path('Metric', x) for x in metricnames]
+        return db.get_async(keys)
 
 def reset_metric_cache():
     global _metric_cache
@@ -49,9 +49,9 @@ class File(db.Model):
     file_sets = db.StringListProperty()
 
 class FileCache(CachedDataView):
-    def begin_getitem(self, filename):
-        key = db.Key.from_path('File', filename)
-        return db.get_async(key)
+    def begin_getitems(self, filenames):
+        keys = [db.Key.from_path('File', x) for x in filenames]
+        return db.get_async(keys)
 
 def reset_files_cache():
     global _files_cache
@@ -70,9 +70,9 @@ class FileSet(db.Model):
     files = db.StringListProperty()
 
 class FileSetCache(CachedDataView):
-    def begin_getitem(self, fileset):
-        key = db.Key.from_path('FileSet', fileset)
-        return db.get_async(key)
+    def begin_getitems(self, filesets):
+        keys = [db.Key.from_path('FileSet', x) for x in filesets]
+        return db.get_async(keys)
 
 def reset_fileset_cache():
     global _fileset_cache
@@ -102,6 +102,10 @@ class Commit(db.Model):
     gerrit_patchset_ref = db.StringProperty()
 
 class CommitCache(CachedDataView):
+    def begin_getitems(self, commits):
+        keys = [db.Key.from_path('Commit', commit) for commit in commits]
+        return db.get_async(keys)
+
     def begin_getitem(self, commit):
         key = db.Key.from_path('Commit', commit)
         return db.get_async(key)
