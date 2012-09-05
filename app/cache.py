@@ -45,6 +45,9 @@ class LazyCachedDataView(object):
         if not self._data_valid:
             self.__data = dict(zip(self._keys, [None for key in self._keys]))
             self.__data.update(self._cache_rpc.get_result())
+            logging.info("%s: initial memcache hit %d/%d items"%(
+                self.__class__.__name__, sum(map(bool, self.__data.values())),
+                len(self._keys)))
             self._data_valid = True
         return self.__data
 
@@ -142,3 +145,47 @@ class CachedDataView(LazyCachedDataView):
         for entity in rpc.get_result():
             if entity:
                 yield entity.key().name(), entity
+
+GLOBAL_CACHE_INVALIDATION_COUNTER = "__CachedDataViewInvalidation"
+
+def GlobalDataView(view):
+    class GlobalCachedDataView(object):
+        _instance = None
+
+        def __new__(cls, *args, **kwargs):
+            if not cls._instance:
+                cls._instance = super(GlobalCachedDataView, cls).__new__(
+                                    cls, *args, **kwargs)
+                cls._cache_class = view
+                cls._cache = view(view.all_keys())
+                cls._counter = None
+                cls._key = (cls.__name__
+                            + GLOBAL_CACHE_INVALIDATION_COUNTER)
+            return cls._instance
+
+        @classmethod
+        def _refresh(cls):
+            counter = memcache.get(cls._key)
+            if not counter:
+                memcache.incr(cls._key, initial_value=0)
+                counter = memcache.get(cls._key)
+            if not cls._cache or not counter or counter != cls._counter:
+                logging.info("%s(%s): refresh"%(
+                    cls.__name__, view.__name__))
+                cls._counter = counter
+                cls._cache = cls._cache_class(cls._cache_class.all_keys())
+
+        @classmethod
+        def invalidate(cls):
+            logging.info("%s(%s): invalidate"%(
+                cls.__name__, view.__name__))
+            memcache.incr(cls._key, initial_value=0)
+
+        def __iter__(self):
+            self._refresh()
+            return self.__class__._cache.__iter__()
+
+        def __getitem__(self, item):
+            return self.__class__._cache.__getitem__(item)
+
+    return GlobalCachedDataView

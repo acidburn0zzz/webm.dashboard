@@ -17,7 +17,7 @@ from google.appengine.dist import use_library
 use_library('django', '1.2')
 
 from google.appengine.ext import db
-from cache import CachedDataView
+from cache import CachedDataView, GlobalDataView
 import datetime
 import pickle
 
@@ -32,16 +32,11 @@ class MetricCache(CachedDataView):
         keys = [db.Key.from_path('Metric', x) for x in metricnames]
         return db.get_async(keys)
 
-def reset_metric_cache():
-    global _metric_cache
+    @classmethod
+    def all_keys(cls):
+        return [k.name() for k in Metric.all(keys_only = True)]
 
-    _metric_cache = MetricCache(
-        [k.name() for k in Metric.all(keys_only = True)])
-
-def metrics():
-    return _metric_cache
-
-reset_metric_cache()
+metrics = GlobalDataView(MetricCache)
 
 class File(db.Model):
     # key_name is the filename
@@ -53,16 +48,11 @@ class FileCache(CachedDataView):
         keys = [db.Key.from_path('File', x) for x in filenames]
         return db.get_async(keys)
 
-def reset_files_cache():
-    global _files_cache
+    @classmethod
+    def all_keys(cls):
+        return [k.name() for k in File.all(keys_only = True)]
 
-    _files_cache = FileCache([k.name() for k in File.all(keys_only = True)])
-
-def files():
-    return _files_cache
-
-reset_files_cache()
-
+files = GlobalDataView(FileCache)
 
 class FileSet(db.Model):
     # key_name is the file set name
@@ -74,16 +64,11 @@ class FileSetCache(CachedDataView):
         keys = [db.Key.from_path('FileSet', x) for x in filesets]
         return db.get_async(keys)
 
-def reset_fileset_cache():
-    global _fileset_cache
+    @classmethod
+    def all_keys(cls):
+        return [k.name() for k in FileSet.all(keys_only = True)]
 
-    _fileset_cache = FileSetCache(
-        [k.name() for k in FileSet.all(keys_only = True)])
-
-def filesets():
-    return _fileset_cache
-
-reset_fileset_cache()
+filesets = GlobalDataView(FileSetCache)
 
 class Commit(db.Model):
     author = db.StringProperty()
@@ -110,16 +95,11 @@ class CommitCache(CachedDataView):
         key = db.Key.from_path('Commit', commit)
         return db.get_async(key)
 
-def reset_commit_cache():
-    global _commit_cache
+    @classmethod
+    def all_keys(cls):
+        return [k.name() for k in Commit.all(keys_only = True)]
 
-    _commit_cache = CommitCache(
-        [k.name() for k in Commit.all(keys_only = True)])
-
-def commits():
-    return _commit_cache
-
-reset_commit_cache()
+commits = GlobalDataView(CommitCache)
 
 class DictProperty(db.Property):
   data_type = dict

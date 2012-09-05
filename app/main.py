@@ -18,7 +18,6 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp import util as webapp_util
 from google.appengine.ext import db
-from google.appengine.api import memcache
 from google.appengine.api import users
 
 # Standard libraries
@@ -56,8 +55,7 @@ class ImportMetricHandler(webapp.RequestHandler):
                              distortion=data["distortion"],
                              yaxis=data.get("yaxis", None))
             m.put()
-        memcache.flush_all()
-        model.reset_metric_cache()
+        model.metrics().invalidate()
 
 class ImportFileSetHandler(webapp.RequestHandler):
     def post(self):
@@ -86,9 +84,8 @@ class ImportFileSetHandler(webapp.RequestHandler):
             model.File(key_name=filename,
                        display_name=filename[:split_index],
                        file_sets=files_added[filename]).put()
-        memcache.flush_all()
-        model.reset_fileset_cache()
-        model.reset_files_cache()
+        model.filesets().invalidate()
+        model.files().invalidate()
 
 class ImportCodecMetricHandler(webapp.RequestHandler):
     def put_metric_index(self, parent, metrics, files):
@@ -151,7 +148,6 @@ class ImportCodecMetricHandler(webapp.RequestHandler):
             self.put_metric_index(m, metrics, files)
             self.update_drilldown(m, metrics, files)
         drilldown.save()
-        memcache.flush_all()
 
 def pretty_json(x):
     return json.dumps(x, indent=2, sort_keys=True)
@@ -386,8 +382,9 @@ class AverageImprovementHandler(webapp.RequestHandler):
         if not parent:
             parent = commits[-1]
 
+        metrics_cache = model.metrics()
         for m in metrics:
-            if model.metrics()[m].distortion:
+            if metrics_cache[m].distortion:
                 improvement = rd_improvement
             else:
                 improvement = mean_improvement
@@ -542,12 +539,13 @@ class ChartHandler(webapp.RequestHandler):
 def build_history(commit, visited=set()):
     to_visit = [commit]
     history = []
+    commit_cache = model.commits()
     while(to_visit):
         commit = to_visit.pop(0)
         if commit not in visited:
             visited.add(commit)
             history.insert(0, commit)
-            commit = model.commits()[commit]
+            commit = commit_cache[commit]
             to_visit.extend(commit.parents)
     return history
 
@@ -555,8 +553,9 @@ def build_history(commit, visited=set()):
 @cache_result()
 def initial_visited(c1):
     visited=set()
+    commit_cache = model.commits()
     while c1:
-        c1 = model.commits()[c1]
+        c1 = commit_cache[c1]
         visited.update(c1.parents)
         if c1.parents:
             c1 = c1.parents[0]
@@ -580,9 +579,10 @@ class CommitInfoHandler(webapp.RequestHandler):
 
         # Look up the commit data for these commits
         selected_commits = {}
+        commit_cache = model.commits()
         for commit in commits:
             if commit not in selected_commits:
-                selected_commits[commit] = model.commits()[commit]
+                selected_commits[commit] = commit_cache[commit]
 
         # Sort in topological order
         commits = sorted(selected_commits.keys(),
@@ -594,7 +594,7 @@ class CommitInfoHandler(webapp.RequestHandler):
 
         formatted = []
         for commit in history:
-            commit_data = model.commits()[commit]
+            commit_data = commit_cache[commit]
             message = commit_data.message.split("\n")
             nonempty_lines = sum(map(bool, message))
             data = {'commit': commit_data.key().name()[:9],
@@ -606,7 +606,7 @@ class CommitInfoHandler(webapp.RequestHandler):
 
         # We also get the baseline
         if baseline:
-            commit_data = model.commits()[baseline]
+            commit_data = commit_cache[baseline]
             message = commit_data.message.split("\n")
             nonempty_lines = sum(map(bool, message))
             baseline = {'commit': commit_data.key().name()[:9],
@@ -723,8 +723,9 @@ class HistoryHandler(webapp.RequestHandler):
 
         formatted = []
         rollup = []
+        commit_cache = model.commits()
         for commit in collapsed_history:
-            commit_data = model.commits()[commit]
+            commit_data = commit_cache[commit]
             message = commit_data.message.split("\n")
             nonempty_lines = sum(map(bool, message))
             data = {'commit': commit_data.key().name()[:9],

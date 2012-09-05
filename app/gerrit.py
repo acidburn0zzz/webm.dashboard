@@ -19,7 +19,6 @@ from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp import util
 from google.appengine.ext import db
 from google.appengine.api import urlfetch
-from google.appengine.api import memcache
 
 import datetime
 from django.utils import simplejson as json
@@ -187,8 +186,7 @@ class ImportCommitHandler(webapp.RequestHandler):
         new_commits = []
         for line in data:
             new_commits.append(self.load(json.loads(line)))
-        memcache.flush_all()
-        model.reset_commit_cache()
+        model.commits().invalidate()
 
         self.update_depth(new_commits)
 

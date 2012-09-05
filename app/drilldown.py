@@ -407,7 +407,8 @@ class DrilldownMatrix(object):
         """Reinitialize the object, forcing the data to be refetched"""
         self.__init__()
 
-    def query_(self, metric=None, config=None, filename=None, commit=None):
+    def query_(self, metric_cache, metric=None, config=None, filename=None,
+               commit=None):
         """Returns a subset of the matrix matching the given parameters"""
         def match_only(entry, params, field):
             """Does the entry match on only a single field"""
@@ -439,8 +440,8 @@ class DrilldownMatrix(object):
         if metric and not time_series:
             # Must match the y-axis of the specified metric
             candidate_metrics = set()
-            yaxis = model.metrics()[metric].yaxis
-            for key, m in model.metrics():
+            yaxis = metric_cache[metric].yaxis
+            for key, m in metric_cache:
                 if m.yaxis == yaxis:
                     candidate_metrics.add(m.key().name())
             result[0] = result[0].intersection(candidate_metrics)
@@ -457,14 +458,15 @@ class DrilldownMatrix(object):
 
     def query(self, metric, config, filename, commit):
         result = None
+        metric_cache = model.metrics()
         for m in _split_field(metric):
             for cfg in _split_field(config):
                 for f in _split_filename(filename):
                     for cm in _split_field(commit):
                         if not result:
-                            result = self.query_(m,cfg,f,cm)
+                            result = self.query_(metric_cache, m,cfg,f,cm)
                         else:
-                            r = self.query_(m,cfg,f,cm)
+                            r = self.query_(metric_cache, m,cfg,f,cm)
                             for idx in range(4):
                                 result[idx] = result[idx].intersection(r[idx])
         return result
