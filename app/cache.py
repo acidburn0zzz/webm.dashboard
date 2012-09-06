@@ -11,6 +11,8 @@
 from google.appengine.api import memcache
 import logging
 
+PREFETCH_LIMIT = 100
+
 def cache_result(key=None):
     """Decorator to cache the result of the function"""
     def wrapper(fn):
@@ -45,25 +47,60 @@ class LazyCachedDataView(object):
         if not self._data_valid:
             self.__data = dict(zip(self._keys, [None for key in self._keys]))
             self.__data.update(self._cache_rpc.get_result())
+
+            # Get a list of misses
+            self._missing = []
+            for key, value in self.__data.iteritems():
+                if value is None:
+                    self._missing.append(key)
+
             logging.info("%s: initial memcache hit %d/%d items"%(
-                self.__class__.__name__, sum(map(bool, self.__data.values())),
+                self.__class__.__name__, len(self._keys) - len(self._missing),
                 len(self._keys)))
             self._data_valid = True
+
         return self.__data
 
-    def _begin_get_missing(self, data):
-        missing = []
-        # Get a list of misses
-        for key, value in data.iteritems():
-            if value is None:
-                missing.append(key)
+    def _begin_get_missing(self, items=None, limit=None):
+        if items:
+            missing = filter(lambda x: self._data()[x] == None, items)
+            if limit is not None:
+                limit = max(limit - len(missing), 0)
+        else:
+            missing = []
+
+        last_missing = self._missing
+        if limit is None:
+            missing.extend(self._missing)
+            self._missing = []
+        elif limit > 0:
+            missing.extend(self._missing[:limit])
+            self._missing = self._missing[limit:]
+
+        if items:
+           for key in items:
+               assert (key in missing) or (self._data()[key] is not None)
 
         if missing:
-            logging.info("%s: fetching %d missing items"%(
-                         self.__class__.__name__, len(missing)))
+            logging.info("%s: fetching %d/%d missing items"%(
+                         self.__class__.__name__, len(missing),
+                         len(last_missing)))
+            assert len(missing) <= len(last_missing)
 
-        # Start the RPC to fill in the missing items
-        return self.begin_getitems(missing)
+            # Start the RPC to fill in the missing items
+            return self.begin_getitems(missing)
+        return None
+
+
+    def _get_missing(self, data, missing_rpc):
+        missing_data = {}
+        if missing_rpc:
+            for key, value in self.getitems(self._keys, missing_rpc):
+                data[key] = value
+                missing_data[key] = value
+
+            self._save(missing_data)
+        return missing_data
 
     def _save(self, missing_data):
         # Add the missing data to the cache
@@ -76,28 +113,27 @@ class LazyCachedDataView(object):
         data = self._data()
 
         # Start the RPC to fill in the missing items
-        missing_rpc = self._begin_get_missing(data)
+        missing_rpc = self._begin_get_missing()
 
         # Yield the items we do have first
         for key, value in data.iteritems():
             if value is not None:
                 yield key, value
 
-        missing_data = {}
-        for key, value in self.getitems(self._keys, missing_rpc):
-            data[key] = value
-            missing_data[key] = value
+        for key, value in self._get_missing(data, missing_rpc).iteritems():
             yield key, value
-
-        self._save(missing_data)
 
     def __getitem__(self, key):
         """Get a single item from the cache"""
         data = self._data()
         if data[key] is None:
-            value = {key: self.getitem(key, self.begin_getitem(key))}
-            data.update(value)
-            self._cache.set_multi(value, key_prefix=self._cache_prefix)
+            missing_rpc = self._begin_get_missing([key], PREFETCH_LIMIT)
+            missing = self._get_missing(data, missing_rpc)
+            assert key in missing.keys()
+            assert missing[key] == data[key]
+        else:
+            missing_rpc = self._begin_get_missing(limit=PREFETCH_LIMIT)
+            self._get_missing(data, missing_rpc)
         return data[key]
 
     def begin_getitems(self, keys):
@@ -128,12 +164,8 @@ class CachedDataView(LazyCachedDataView):
 
         # Force a fetch of all missing items
         data = self._data()
-        missing_rpc = self._begin_get_missing(data)
-        missing_data = {}
-        for key, value in self.getitems(self._keys, missing_rpc):
-            data[key] = value
-            missing_data[key] = value
-        self._save(missing_data)
+        missing_rpc = self._begin_get_missing(limit=PREFETCH_LIMIT)
+        self._get_missing(data, missing_rpc)
 
     def begin_getitems(self, keys):
         """Called with a list of items that will be requested, so that the

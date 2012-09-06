@@ -66,7 +66,7 @@ class DrilldownCommitCache(CachedDataView):
                              "date" : commitdata.commit_time,
                              "author" : commitdata.author,
                              "branches" : commitdata.branches }
-            yield commit, commitdata
+                yield commit, commitdata
 
 @cache_result()
 def metric_tree_formatter(metric_cache):
