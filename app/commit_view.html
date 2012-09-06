@@ -27,6 +27,7 @@ function ChartFillerCaller(input) {
   var commit = input[3];
   var baseline = input[4];
 
+  $("#chartdialog").dialog('option', 'title', input.slice(0, 3).join(', '));
   ChartFiller(metric, config, filename, commit, baseline);
 }
 
@@ -452,7 +453,7 @@ Back to Dashboard
 
 <div id="mainbody">
 <!-- divs for displaying the run data -->
-<div id="leftCol" style="float: left; width: 50%">
+<div id="leftCol" style="float: left">
 <table width="100%">
     <tr id="{{commit.commit}}_row">
         <td width="10em">{{ commit.commit }}</td>
@@ -491,7 +492,9 @@ Back to Dashboard
 </table>
 </div>
 
-<div id="rightCol" style="float: left; width: 50%">
+<div id="rightCol" style="float: right">
+
+<!-- Hide the threshold for now
 Threshold: {{threshold}}% <input type="button" value="Change" onclick="openThresholdDialog()"/>
 <br>
 
@@ -501,6 +504,7 @@ Threshold: {{threshold}}% <input type="button" value="Change" onclick="openThres
 <input type='button' value="Submit" onclick="submitThreshold()">
 </form>
 </div>
+-->
 <script>
 
 function openThresholdDialog() {
@@ -523,21 +527,30 @@ function submitThreshold() {
 
 </script>
 
-
-{% for e in runs %}
-  {% if e.color == 'red' %}
-  <p class="redrow" onclick='{{e.clickcommand}}'>
-  <span class="ui-icon ui-icon-arrowthick-1-s" style="float:left"></span>
-  {{ e.metric }}, {{ e.config }}, {{ e.filename }}, {{e.value}}
-  </p>
-
-  {% else %}
-  <p class="greenrow" onclick='{{e.clickcommand}}'>
-  <span class="ui-icon ui-icon-arrowthick-1-n" style="float:left"></span>
-  {{ e.metric }}, {{ e.config }}, {{ e.filename }}, {{e.value}}
-  </p>
-  {% endif %}
+<!-- Elif statement not supported in Django 1.2 -->
+<table class="resultgrid">
+{% for run in runs %}
+  <tr>
+  <td>{{ run.metric }}</td>
+  <td>{{ run.config }}</td>
+  <td valign="center">
+{% for e in run.runs %}
+  <td>
+    {% if e.class == 'good major' or e.class == 'good minor' %}
+    <dt class="{{e.class}}" onclick='{{e.clickcommand}}' title="{{ e.filename }}, {{e.value}}" >&#9650;</dt>
+    {% else %}
+      {% if e.class == 'bad major' or e.class == 'bad minor' %}
+      <dt class="{{e.class}}" onclick='{{e.clickcommand}}' title="{{ e.filename }}, {{e.value}}">&#9660;</dt>
+      {% else %}
+      <dt class="unchanged" onclick='{{e.clickcommand}}' title="{{ e.filename }}, {{e.value}}">&#9724;</dt>
+      {% endif %}
+    {% endif %}
+  </td>
 {% endfor %}
+  </td>
+  </tr>
+{% endfor %}
+</table>
 </div>
 
 <!-- end of mainbody -->

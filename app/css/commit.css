@@ -16,20 +16,27 @@
   position: relative;
 }
 
-p.redrow {
-  color: red;
+dt.good.major {
+  float: left;
+  color: #008000;
 }
-p.redrow:hover {
-  text-decoration: underline;
-  color: red;
-  cursor : hand;
+dt.good.minor {
+  float: left;
+  color: #9acd32;
+}
+dt.unchanged {
+  float: left;
+  color: #d3d3d3;
+}
+dt.bad.minor {
+  float: left;
+  color: #ffa500;
+}
+dt.bad.major {
+  float: left;
+  color: #dc143c;
 }
 
-p.greenrow {
-  color: green;
-}
-p.greenrow:hover {
-  color: green;
-  text-decoration: underline;
-  cursor : hand;
+table.resultgrid td {
+  min-width: 1em;
 }

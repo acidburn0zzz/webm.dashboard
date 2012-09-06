@@ -28,7 +28,9 @@ import drilldown
 import logging
 
 # A global variable to determine how important a test run is (percent improvement)
-THRESHOLD = 2.0
+THRESHOLD_HIGH = 1.0
+THRESHOLD_LOW = 0.1
+
 
 class CommitQueryHandler(webapp.RequestHandler):
     def get(self):
@@ -89,8 +91,9 @@ def get_adhoc_improvement(metrics, configs, filenames, commits):
 class CommitDisplayHandler(webapp.RequestHandler):
     def get(self, commit, optThreshold):
 
+        # TODO: will the threshold ever be adjustable?
         if not optThreshold:
-            threshold = THRESHOLD  # Go back to default if none given
+            threshold = THRESHOLD_HIGH  # Go back to default if none given
         else:
             threshold = float(optThreshold)
 
@@ -142,27 +145,49 @@ class CommitDisplayHandler(webapp.RequestHandler):
         # the value crosses our threshold
         formatted_resps = []
         for row in resps:
-            if abs(row['value']) > threshold:
-                if row['metric'] == 'Time(us)' or row['metric'] == 'Bitrate':
-                    continue
-                if row['filename'][0] == '~':
-                    continue
+            if row['metric'] == 'Time(us)' or row['metric'] == 'Bitrate' or row['metric'] == 'target_bitrate':
+                continue
+            if row['filename'][0] == '~':
+                continue
+
+            if abs(row['value']) > THRESHOLD_HIGH:
                 if row['value'] > 0:
-                    row['color'] = 'green'
+                    row['class'] = 'good major'
                 else:
-                    row['color'] = 'red'
+                    row['class'] = 'bad major'
 
-                # This is a bit messy, but it works (mixing django and
-                # javascript doesn't work like you would hope)
-                row['clickcommand'] = str("javascript: ChartFillerCaller(" + "\'" +
-                                      row['metric'].encode('ascii', 'ignore') + "," +
-                                      row['config'].encode('ascii', 'ignore') + "," +
-                                      row['filename'].encode('ascii', 'ignore') + ',' +
-                                      commit['commitid'].encode('ascii', 'ignore') + "," +
-                                      row['baseline'].encode('ascii', 'ignore') + "\'"+ ')')
-                formatted_resps.append(row)
+            elif abs(row['value']) > THRESHOLD_LOW:
+                if row['value'] > 0:
+                    row['class'] = 'good minor'
+                else:
+                    row['class'] = 'bad minor'
 
-        formatted_resps = sorted(formatted_resps, key=lambda row: row['value'])
+            else: # We are right in the middle
+              row['class'] = "unchanged"
+
+            # This is a bit messy, but it works (mixing django and
+            # javascript doesn't work like you would hope)
+            row['clickcommand'] = str("javascript: ChartFillerCaller(" + "\'" +
+                                  row['metric'].encode('ascii', 'ignore') + "," +
+                                  row['config'].encode('ascii', 'ignore') + "," +
+                                  row['filename'].encode('ascii', 'ignore') + ',' +
+                                  commit['commitid'].encode('ascii', 'ignore') + "," +
+                                  row['baseline'].encode('ascii', 'ignore') + "\'"+ ')')
+            formatted_resps.append(row)
+
+        # TODO: How do we want to sort this?
+        resp_rows = {}
+        for resp in formatted_resps:
+            key = (resp['metric'], resp['config'])
+            row = resp_rows.setdefault(key, [])
+            row.append(resp)
+        formatted_resps=[]
+        for key in sorted(resp_rows.keys()):
+            formatted_resps.append({
+                'metric': key[0],
+                'config': key[1],
+                'runs': sorted(resp_rows[key], key=lambda x: x['filename']),
+                })
 
         html = template.render("commit_view.html", {'commit': commit,
                                                     'runs': formatted_resps,
