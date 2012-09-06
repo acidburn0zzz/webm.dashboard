@@ -37,31 +37,14 @@ class CommitQueryHandler(webapp.RequestHandler):
         self.response.out.write(template.render("commit_viewer.html", {}))
 
 @cache_result()
-def get_adhoc_improvement(metrics, configs, filenames, commits):
+def get_adhoc_improvement(metrics, config, filenames, commit):
     # Mostly copied from main.py with some notable changes
     response = []
 
     # Find the baseline based on the raw URL variables
-    parent = main.find_baseline(metrics, configs, filenames, commits)
-    # We format the end of the table with extra info
-    if parent:
-        parent_str = parent[:9]
-    else:
-        parent_str = "None found"
-
+    parent = main.find_baseline(",".join(metrics), config,
+                                ",".join(filenames), commit)
     result = []
-
-    metrics = util.field_list(metrics)
-    configs = util.field_list(configs)
-    fileset = filenames
-    filenames = util.filename_list(filenames)
-    commits = util.field_list(commits)
-
-    # Fix for the case that a commit in commits has no parent
-    # In this case we choose the oldest commit as the parent, ie the one
-    # without a parent.
-    if not parent:
-        parent = commits[-1]
 
     for m in metrics:
         if model.metrics()[m].distortion:
@@ -69,21 +52,17 @@ def get_adhoc_improvement(metrics, configs, filenames, commits):
         else:
             improvement = main.mean_improvement
 
-        for cfg in configs:
-            baseline_data = main.fetch_metric_for_fileset(m, cfg, filenames,
-                                                          parent)
-            for cm in commits:
-                col = [] # Each m, cfg, cm combination will be a column in
-                         # the table
-                average, results = main.calculate_improvement(
-                    m, cfg, filenames, cm, baseline_data, improvement)
-                for f, composite in results.iteritems():
-                    col.append([f, composite])
-                    response.append({'metric': m, 'config': cfg, 'baseline': parent,
-                                     'filename': f, 'value': composite})
+        if parent:
+            baseline_data = main.fetch_metric_for_fileset(
+                m, config, filenames, parent)
+            average, results = main.calculate_improvement(
+                m, config, filenames, commit, baseline_data, improvement)
+        else:
+            results = dict([f, 0.0] for f in filenames)
 
-                response.append({'metric': m, 'config': cfg, 'baseline': parent,
-                                 'filename': fileset, 'value': average})
+        for f, composite in results.iteritems():
+            response.append({'metric': m, 'config': config, 'baseline': parent,
+                             'filename': f, 'value': composite})
     return response
 
 class CommitDisplayHandler(webapp.RequestHandler):
@@ -116,28 +95,12 @@ class CommitDisplayHandler(webapp.RequestHandler):
         commitid = commit_data.key().name()
 
         # We need (metric, config, fileset) tuples
-        available_metrics = []
-        result = drilldown.drilldown.query('', '', '', commitid)
-        possible_metrics = list(result[0])
-        possible_configs = list(result[1])
-        possible_filesets = list(result[2])
-
-        # TODO: There must be a better way of doing this
-        for m in possible_metrics:
-            result = drilldown.drilldown.query(m, '', '', commit_data.key().name())
-            for c in result[1]:
-                result2 = drilldown.drilldown.query(m, c, '', commit_data.key().name())
-                for f in result2[2]:
-                    result3 = drilldown.drilldown.query(m, c, f, commit_data.key().name())
-                    if len(result[0]) == 0:
-                        continue
-                    available_metrics.append((m, c, f))
-
         resps = []
-        for (m, c, f) in available_metrics:
-            if f[0] == '~' and f != '~All':
-                resp = get_adhoc_improvement(m, c, f, commitid)
-                resps += resp
+        query = model.CodecMetricIndex.all()
+        query = query.filter('commit =', commitid)
+        for item in query:
+            resps.extend(get_adhoc_improvement(item.metrics, item.config_name,
+                                               item.files, commitid))
 
         # Now that we have our responses, we can format them by seeing if
         # the value crosses our threshold
@@ -148,7 +111,9 @@ class CommitDisplayHandler(webapp.RequestHandler):
             if row['filename'][0] == '~':
                 continue
 
-            if abs(row['value']) > THRESHOLD_HIGH:
+            if not row['baseline']:
+                row['class'] = 'unknown'
+            elif abs(row['value']) > THRESHOLD_HIGH:
                 if row['value'] > 0:
                     row['class'] = 'good major'
                 else:
@@ -165,12 +130,13 @@ class CommitDisplayHandler(webapp.RequestHandler):
 
             # This is a bit messy, but it works (mixing django and
             # javascript doesn't work like you would hope)
-            row['clickcommand'] = str("javascript: ChartFillerCaller(" + "\'" +
-                                  row['metric'].encode('ascii', 'ignore') + "," +
-                                  row['config'].encode('ascii', 'ignore') + "," +
-                                  row['filename'].encode('ascii', 'ignore') + ',' +
-                                  commit['commitid'].encode('ascii', 'ignore') + "," +
-                                  row['baseline'].encode('ascii', 'ignore') + "\'"+ ')')
+            if row['baseline']:
+                row['clickcommand'] = str("javascript: ChartFillerCaller(" + "\'" +
+                                      row['metric'].encode('ascii', 'ignore') + "," +
+                                      row['config'].encode('ascii', 'ignore') + "," +
+                                      row['filename'].encode('ascii', 'ignore') + ',' +
+                                      commit['commitid'].encode('ascii', 'ignore') + "," +
+                                      row['baseline'].encode('ascii', 'ignore') + "\'"+ ')')
             formatted_resps.append(row)
 
         # TODO: How do we want to sort this?
