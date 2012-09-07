@@ -10,12 +10,11 @@ import sys
 import urllib
 import urllib2
 
-METRIC_POST_URL = "http://%s/import-codec-metrics"
-FILESET_POST_URL = "http://%s/import-filesets"
 JENKINS_BUILD_URL = "http://build.webmproject.org/jenkins/job/encode-build/build"
 LONG_OPTIONS = ["shard=", "shards=", "build", "src-path=", "bin-path=",
                 "vid-path=", "host=", "update-filesets", "commit=",
                 "remote", "token="]
+UPLOAD_DATA_BIN = os.path.join(os.path.dirname(__file__), 'upload-data.py')
 
 def Usage(selfname):
   print "Usage: %s [options] <config ...> <fileset ...>"%selfname
@@ -204,7 +203,7 @@ def SelectRuns(globs, shard, shards):
   return sorted(results, key=lambda x: x['configure_flags'])
 
 
-def RunCommand(command, stdout=None, env=None):
+def RunCommand(command, stdout=None, stdin=None, env=None):
   environment = dict(os.environ)
   if env:
     environment.update(env)
@@ -213,9 +212,15 @@ def RunCommand(command, stdout=None, env=None):
   else:
     pstdout = None
 
+  if stdin is not None:
+    pstdin = subprocess.PIPE
+  else:
+    pstdin = None
+
   print "+ " + " ".join(command)
-  run = subprocess.Popen(command, stdout=pstdout, env=environment)
-  output = run.communicate()
+  run = subprocess.Popen(command, stdout=pstdout, stdin=pstdin,
+                         env=environment)
+  output = run.communicate(input=stdin)
   if run.returncode:
     print "Non-zero return code: " + str(run.returncode) + " => exiting!"
     sys.exit(1)
@@ -298,10 +303,8 @@ def Encode(runs, host, bin_path, commit, vid_path):
     records.append(record)
 
   # Post to dashboard
-  data = {'data': "\n".join([json.dumps(record) for record in records])}
-  data = urllib.urlencode(data)
-  request = urllib2.Request(METRIC_POST_URL%host, data)
-  response = urllib2.urlopen(request)
+  data = "\n".join([json.dumps(record) for record in records])
+  RunCommand([UPLOAD_DATA_BIN, '--host', host, '--data', '-'], stdin=data)
 
 
 def UpdateFilesets(host):
@@ -311,10 +314,8 @@ def UpdateFilesets(host):
 
   # Post to dashboard
   print records
-  data = {'data': "\n".join([json.dumps(record) for record in records])}
-  data = urllib.urlencode(data)
-  request = urllib2.Request(FILESET_POST_URL%host, data)
-  response = urllib2.urlopen(request)
+  data = "\n".join([json.dumps(record) for record in records])
+  RunCommand([UPLOAD_DATA_BIN, '--host', host, '--fileset', '-'], stdin=data)
 
 
 def TriggerBuild(token, commit, args):
