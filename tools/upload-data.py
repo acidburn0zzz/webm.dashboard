@@ -84,10 +84,10 @@ def fetch_access_token():
   token = json.loads(response.read())
   return token['access_token']
 
-def upload(secure, host, path, filename):
+def upload(secure, host, path, filehandle):
   protocol = {True: 'https', False: 'http'}[secure]
   url = '%s://%s%s'%(protocol, host, path)
-  form = {'data': open(filename).read()}
+  form = {'data': filehandle.read()}
   data = urllib.urlencode(form)
   headers = {'Authorization': 'Bearer %s'%fetch_access_token()}
   request = urllib2.Request(url, data, headers)
@@ -117,7 +117,10 @@ def main(argv=None):
     return 1
 
   for filename in args:
-    upload(opts.secure, opts.host, opts.url, filename)
+    if filename == "-":
+      upload(opts.secure, opts.host, opts.url, sys.stdin)
+    else:
+      upload(opts.secure, opts.host, opts.url, open(filename))
 
 if __name__ == "__main__":
   sys.exit(main())
