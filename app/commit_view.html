@@ -1,11 +1,29 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title> Commit Summary </title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commit Summary</title>
+<!--
 <link rel="stylesheet" type="text/css" href="/css/main.css"/>
 <link rel="stylesheet" type="text/css" href="/css/commit.css"/>
+-->
+  <link href="/css/bootstrap.css" rel="stylesheet">
+  <link href="/css/bootstrap-responsive.css" rel="stylesheet">
+  <link href="/css/dashboard.css" rel="stylesheet">
+  <style type="text/css">
+    body {
+      padding-top: 60px;
+      padding-bottom: 40px;
+    }
+  </style>
+  <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+  <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
 
 <!-- The majority of our javascript -->
-<script type="text/javascript" src="/js/jstree/_lib/jquery.js"></script>
+  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.js"></script>
 <script type="text/javascript" src="/js/jstree/jquery.jstree.js"></script>
 <link rel="stylesheet" type="text/css" href="/js/jquery-ui/css/smoothness/jquery-ui-1.8.21.custom.css" />
 <script type="text/javascript" src="/js/jquery-ui/js/jquery-ui-1.8.21.custom.min.js"></script>
@@ -417,94 +435,144 @@ $(function() {
     $('#status').html("");
   });
 });
-// -----------------------------------------------------------------------------
-// The majority of the html is below
 </script>
 
-<!-- header -->
-<div id="header">
-<div id="headerLeft">
-Commit Summary : {{ commit.commit }}
-</div>
+  <link rel="shortcut icon" href="/images/webm-48px.png">
+  <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
 
-<div id="headerRight">
-<!-- A button to clear out all trees -->
-<a href="/commit_viewer/" id="searchbutton" style="display:table-cell; vertical-align: middle;">
-Search
-</a>
-&nbsp;|&nbsp;
+  <script type='text/javascript'>
+     $(document).ready(function () {
+       if ($("[rel=popover]").length) {
+       $("[rel=popover]").popover();
+     }
+   });
+  </script>
+</head>
+<body>
 
-<!-- Help button -->
-<a href="/" id="mainpbutton" style="display:table-cell; vertical-align: middle;">
-Back to Dashboard
-</a>
-</div>
-</div> <!-- end of header -->
-<div class="clear"></div>
+  <header>
 
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container-fluid">
+          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </a>
+          <a class="brand" href="/">WebM Dashboard</a>
+          <div class="nav-collapse collapse">
+            <p class="navbar-text pull-right">
+              {% if user %}
+              Logged in as {{ user.nickname }} [<a href="{{ logout_url }}">Sign Out</a>]
+              {% else %}
+              <a href="{{ login_url }}">Sign In</a>
+              {% endif %}
+            </p>
+            <ul class="nav">
+              <li><a href="/">Explorer View</a></li>
+              <li><a href="/commit_viewer/">Commit View</a></li>
+              <li><a href="#helpModal" data-toggle="modal">Help</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal hide fade" id="helpModal" tabindex="-1" role="dialog" aria-labelledby="helpModalLabel" aria-hidden="true">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 id="helpModalLabel">About this page</h3>
+      </div>
+      <div class="modal-body">
+        <ul>
+          <li>To view a graph of performance data, please select some metrics, configurations, filesets and patch sets. </li>
+          <li> The page will automatically update to reflect what data is available.</li>
+          <li> Then in the area below, pick a filename to view the graph.</li>
+          <li> Multiple filenames can be selected with the ctrl or shift keys.</li>
+          <li>The raw data for a graph is viewable in the "Table" tab.</li>
+          <li>The reset button unchecks all selected options. </li>
+        </ul>
+      </div>
+    </div>
+
+  </header>
+
+  <div class="container-fluid">
+
+<!-- start save -->
 <!-- divs for pop up dialogs -->
 <div id="chartdialog">
-<div id="chartdiv"></div>
-<div id="status"></div>
+  <div id="chartdiv"></div>
+  <div id="status"></div>
 </div>
+<div id="configInfo"></div>
+<!-- end save -->
 
-<div id="configInfo">
-</div>
+    <div class="row-fluid" id="">
+      <div class="span6">
+        <h3>Commit Summary: {{ commit.commit }}</h3>
+      </div>
+      <div class="span6">
+        <a href="/" id="mainpbutton" class="btn pull-right" style="margin-left: 1em;">Back to Dashboard</a>
+        <a href="/commit_viewer/" id="searchbutton" class="btn pull-right">Search Commits</a>
+      </div>
+    </div>
 
-<div id="mainbody">
-<!-- divs for displaying the run data -->
-<div id="leftCol" style="float: left">
-<table width="100%">
-    <tr id="{{commit.commit}}_row">
-        <td width="10em">{{ commit.commit }}</td>
-        <td>{{ commit.date }}</td>
-    </tr>
-    <tr id="{{commit.commit}}_row2">
-        <td width="10em"></td>
-        <td>{{ commit.author }}</td>
-    </tr>
-    <tr id="{{commit.commit}}_row3">
-        <td width="10em"></td>
-        <td>
-            <div>{{ commit.subject }}</div>
-            <div id="{{commit.commit}}_body1">
+    <div class="row-fluid" id="">
+      <div class="span6">
+
+        <table class="commitlog">
+          <tr id="{{commit.commit}}_row">
+            <td>{{ commit.commit }}</td>
+            <td>{{ commit.date }}</td>
+          </tr>
+          <tr id="{{commit.commit}}_row2">
+            <td></td>
+            <td>{{ commit.author }}</td>
+          </tr>
+          <tr id="{{commit.commit}}_row3">
+            <td></td>
+            <td>
+              <div><strong>{{ commit.subject }}</strong></div>
+              <div id="{{commit.commit}}_body1">
                 {% for line in commit.body %}
-                {{ line }}<br>
+                  {{ line }}<br>
                 {% endfor %}
-            </div>
-        </td>
-    </tr>
-    <tr id="{{commit.commit}}_row4">
-        <td width="10em"></td>
-        <td>
-            <div> Branches:</div>
-            <div id="{{commit.commit}}_body2">
+              </div>
+            </td>
+          </tr>
+          <tr id="{{commit.commit}}_row4">
+            <td></td>
+            <td>
+              <div> Branches:</div>
+              <div id="{{commit.commit}}_body2">
                 {% if commit.branches %}
                   {% for br in commit.branches %}
-                   {{ br }}<br>
+                    {{ br }}<br>
                   {% endfor %}
                 {% else %}
                   None
                 {% endif %}
-            </div>
-        </td>
-    </tr>
-</table>
-</div>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <div class="span6" style="overflow: auto;">
 
-<div id="rightCol" style="float: right">
+        <!-- Hide the threshold for now
+        Threshold: {{threshold}}% <input type="button" value="Change" onclick="openThresholdDialog()"/>
+        <br>
 
-<!-- Hide the threshold for now
-Threshold: {{threshold}}% <input type="button" value="Change" onclick="openThresholdDialog()"/>
-<br>
+        <div id="thresholdDialog"> Please choose a new threshold:
+        <form id="thform" name="thform" onsubmit="submitThreshold()" style="float:left">
+        <input type='text' name='newThreshold' />
+        <input type='button' value="Submit" onclick="submitThreshold()">
+        </form>
+        </div>
+        -->
 
-<div id="thresholdDialog"> Please choose a new threshold:
-<form id="thform" name="thform" onsubmit="submitThreshold()" style="float:left">
-<input type='text' name='newThreshold' />
-<input type='button' value="Submit" onclick="submitThreshold()">
-</form>
-</div>
--->
 <script>
 
 function openThresholdDialog() {
@@ -527,38 +595,31 @@ function submitThreshold() {
 
 </script>
 
-<!-- Elif statement not supported in Django 1.2 -->
-<table class="resultgrid">
-{% for run in runs %}
-  <tr>
-  <td>{{ run.metric }}</td>
-  <td>{{ run.config }}</td>
-  <td valign="center">
-{% for e in run.runs %}
-  <td>
-    {% if e.class == 'good major' or e.class == 'good minor' %}
-    <dt class="{{e.class}}" onclick='{{e.clickcommand}}' title="{{ e.filename }}, {{e.value}}" >&#9650;</dt>
-    {% else %}
-      {% if e.class == 'bad major' or e.class == 'bad minor' %}
-      <dt class="{{e.class}}" onclick='{{e.clickcommand}}' title="{{ e.filename }}, {{e.value}}">&#9660;</dt>
-      {% else %}
-      <dt class="unchanged" onclick='{{e.clickcommand}}' title="{{ e.filename }}, {{e.value}}">&#9724;</dt>
-      {% endif %}
-    {% endif %}
-  </td>
-{% endfor %}
-  </td>
-  </tr>
-{% endfor %}
-</table>
-</div>
+        <!-- Elif statement not supported in Django 1.2 -->
+        <table class="resultgrid">
+          {% for run in runs %}
+          <tr>
+            <th>{{ run.metric }}</th>
+            <th>{{ run.config }}</th>
+            <td>
+            {% for e in run.runs %}
+              {% if e.class == 'good major' or e.class == 'good minor' %}
+              <dt class="{{e.class}}" onclick='{{e.clickcommand}}' title="{{ e.filename }}, {{e.value}}" >&#9650;</dt>
+              {% else %}
+                {% if e.class == 'bad major' or e.class == 'bad minor' %}
+                <dt class="{{e.class}}" onclick='{{e.clickcommand}}' title="{{ e.filename }}, {{e.value}}">&#9660;</dt>
+                {% else %}
+                <dt class="unchanged" onclick='{{e.clickcommand}}' title="{{ e.filename }}, {{e.value}}">&#9724;</dt>
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+          </td>
+          </tr>
+        </table>
+      </div>
 
-<!-- end of mainbody -->
-<div class="clear"></div>
-</div>
-
-<!-- footer -->
-<div class="clear"></div>
-<div id="footer">
-<a href="http://webmproject.org" target="_blank"> The WebM Project </a>
-</div> <!-- end of footer -->
+    </div>
+  </div>
+</body>
+</html>
