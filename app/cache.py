@@ -85,7 +85,11 @@ class LazyCachedDataView(object):
             logging.info("%s: fetching %d/%d missing items"%(
                          self.__class__.__name__, len(missing),
                          len(last_missing)))
-            assert len(missing) <= len(last_missing)
+            if len(missing) > len(last_missing):
+                logging.info(("%s: some keys are being fetched that weren't "
+                              "in _missing: %s")%(
+                              self.__class__.__name__, missing))
+            #assert len(missing) <= len(last_missing)
 
             # Start the RPC to fill in the missing items
             return self.begin_getitems(missing)
