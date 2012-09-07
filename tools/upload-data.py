@@ -116,6 +116,11 @@ def main(argv=None):
     parser.print_help()
     return 1
 
+  # Install proxy handler
+  proxy = urllib2.ProxyHandler()
+  opener = urllib2.build_opener(proxy)
+  urllib2.install_opener(opener)
+
   for filename in args:
     if filename == "-":
       upload(opts.secure, opts.host, opts.url, sys.stdin)
