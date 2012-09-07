@@ -1,0 +1,185 @@
+/* dashboard.css
+ *
+ * THIS IS A GENERATED FILE and shouldn't be edited
+ * directly. Edit ../less/dashboard.less and
+ * regenerate with `lessc` (lesscss.org).
+ * -------------------------------------------------- */
+
+/* Begin rlawler -------------------------------- */
+/* This hides unselectable checkboxes in the commit tree */
+/* Note: display:none was not working for some reason beyond my understanding */
+[rel=noBox] > a > .jstree-checkbox {
+  visibility: hidden;
+  width: 0%;
+  height: 0%;
+}
+/* Fancy scrollbar is fancy! */
+/*
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-button:start:decrement,
+::-webkit-scrollbar-button:end:increment  {
+  height: 10px;
+  display: block;
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb:vertical {
+  height: 50px;
+  background-color: #ccc;
+  border: 1px solid #aaa;
+  -webkit-border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:horizontal {
+  height: 50px;
+  background-color: #ccc;
+  border: 1px solid #aaa;
+  -webkit-border-radius: 6px;
+}
+
+::-webkit-scrollbar-track-piece  {
+  background-color: #fff;
+  border: 1px solid #aaa;
+  -webkit-border-radius: 6px;
+}
+*/
+/* end of fancy scrollbar */
+.bold-font {
+  font-weight: bold;
+  font-size: 14px;
+}
+#topcenter {
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+  padding-top: 5px;
+  margin-bottom: 5px;
+  height: 200px;
+  padding: 1em;
+  padding-bottom: 55px;
+}
+#bottomcenter {
+  float: left;
+  width: 100%;
+  margin-bottom: 5px;
+}
+/* Hide the border when this widget is empty */
+#githistory:empty {
+  display: none;
+}
+/* End rlawler -------------------------------- */
+/* Begin louquillio --------------------------- */
+/* Variables
+ * -------------------------------------------- */
+/* Utilities
+ * -------------------------------------------- */
+.clear {
+  clear: both;
+}
+/* Major divs
+ * -------------------------------------------- */
+div#upper {
+  height: 192px;
+  overflow: auto;
+  border-bottom: 1px solid #ddd;
+}
+div#upper h3 {
+  margin-top: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+div#upper .border-right {
+  height: 192px;
+  border-right: 1px solid #ddd;
+}
+div#middle {
+  margin-top: 2em;
+}
+div#bottomcenter {
+  margin-top: 60px;
+}
+div#chartdiv {
+  font-weight: bold;
+  margin-top: 1em;
+  min-height: 300px;
+}
+div#status {
+  margin: 0 auto 2em;
+  width: 70%;
+  /* Match the requested chart width % */
+
+}
+dt.good.major {
+  float: left;
+  color: #008000;
+}
+dt.good.minor {
+  float: left;
+  color: #9acd32;
+}
+dt.unchanged {
+  float: left;
+  color: #d3d3d3;
+}
+dt.bad.minor {
+  float: left;
+  color: #ffa500;
+}
+dt.bad.major {
+  float: left;
+  color: #dc143c;
+}
+table.resultgrid {
+  border: 1px solid #ddd;
+  width: 100%;
+}
+table.resultgrid th,
+table.resultgrid td {
+  padding: 3px 5px;
+}
+table.resultgrid th {
+  border: 1px solid #ddd;
+  font-weight: normal;
+  text-align: left;
+}
+table.resultgrid th + th {
+  text-align: center;
+}
+table.resultgrid td {
+  border-bottom: 1px solid #ddd;
+}
+table.resultgrid td dt {
+  min-width: 1em;
+  text-align: center;
+}
+table.resultgrid td + td + td {
+  width: 100%;
+}
+table.commitlog {
+  background-color: #f7f7f7;
+}
+table.commitlog th,
+table.commitlog td {
+  padding: 3px 5px;
+}
+table.commitlog td {
+  font-family: monospace;
+  font-size: small;
+}
+/* Misc
+ * -------------------------------------------- */
+/* Normalize some aesthetics
+ * ------------------------------------------- */
+body,
+.ui-widget,
+.ui-widget input,
+.ui-widget select,
+.ui-widget textarea,
+.ui-widget button {
+  font-family: Arial, sans-serif !important;
+  font-size: 10pt !important;
+}
