@@ -8,6 +8,7 @@
 ##  be found in the AUTHORS file in the root of the source tree.
 ##
 
+import os
 import urllib
 
 def field_list(field):
@@ -28,3 +29,11 @@ def filename_list(field):
                 else:
                     yield fs
     return [x for x in generate(field)]
+
+def development():
+    '''This function lets us determine if we are running on a local server or
+    the live version.'''
+    if os.environ['SERVER_SOFTWARE'].find('Development') == 0:
+        return True
+    else:
+        return False

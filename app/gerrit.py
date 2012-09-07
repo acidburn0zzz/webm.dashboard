@@ -16,8 +16,9 @@ use_library('django', '1.2')
 
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
-from google.appengine.ext.webapp import util
+from google.appengine.ext.webapp import util as webapp_util
 from google.appengine.ext import db
+from google.appengine.api import oauth
 from google.appengine.api import urlfetch
 
 import datetime
@@ -26,9 +27,11 @@ import logging
 import StringIO
 
 import model
+import util
 
 GERRIT_SERVER_URL="https://gerrit.chromium.org/gerrit"
 GERRIT_PROJECT_QUERY="project:webm/libvpx"
+OAUTH_SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 
 class Gerrit(object):
     def __init__(self, url=GERRIT_SERVER_URL):
@@ -181,6 +184,7 @@ class ImportCommitHandler(webapp.RequestHandler):
         return self.load_branch()
 
     def post(self):
+        assert util.development() or oauth.is_current_user_admin()
         gerrit.poll()
         data = StringIO.StringIO(self.request.get("data"))
         new_commits = []
@@ -195,7 +199,7 @@ def main():
     application = webapp.WSGIApplication([
         ('/gerrit/import-commits', ImportCommitHandler),
     ], debug=True)
-    util.run_wsgi_app(application)
+    webapp_util.run_wsgi_app(application)
 
 
 if __name__ == '__main__':

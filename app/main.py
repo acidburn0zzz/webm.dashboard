@@ -18,6 +18,7 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp import util as webapp_util
 from google.appengine.ext import db
+from google.appengine.api import oauth
 from google.appengine.api import users
 
 # Standard libraries
@@ -41,9 +42,12 @@ import urllib
 GERRIT_LINK_HTML=("<a target='_blank' href=\"https://gerrit.chromium.org/gerrit/"
                   "#q,%s,n,z\">%s</a>")
 GERRIT_LINK_PATTERN="(I[a-f0-9]{40})"
+OAUTH_SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
+
 # We give metrics their own handler for convenience
 class ImportMetricHandler(webapp.RequestHandler):
     def post(self):
+        assert util.development() or oauth.is_current_user_admin()
         data = StringIO.StringIO(self.request.get("data"))
         for line in data:
             data = json.loads(line)
@@ -59,6 +63,7 @@ class ImportMetricHandler(webapp.RequestHandler):
 
 class ImportFileSetHandler(webapp.RequestHandler):
     def post(self):
+        assert util.development() or oauth.is_current_user_admin()
         files_added = {}
         data = StringIO.StringIO(self.request.get("data"))
         for line in data:
@@ -89,6 +94,7 @@ class ImportFileSetHandler(webapp.RequestHandler):
 
 class ImportCodecMetricHandler(webapp.RequestHandler):
     def put_metric_index(self, parent, metrics, files):
+        assert util.development() or oauth.is_current_user_admin()
         if metrics and files:
             metric_list = list(metrics)
             file_list = list(files)
@@ -481,20 +487,9 @@ class AverageImprovementHandler(webapp.RequestHandler):
             self.get_adhoc_improvement(metrics, configs, filenames, commits)
 
 
-
-def development():
-    '''This function lets us determine if we are running on a local server or
-    the live version.'''
-    logging.info(os.environ['SERVER_SOFTWARE'])
-    if os.environ['SERVER_SOFTWARE'].find('Development') == 0:
-        return True
-    else:
-        return False
-
-
 class MainHandler(webapp.RequestHandler):
     def get(self):
-        devel = development()
+        devel = util.development()
 
         values = {
             "user": users.get_current_user(),
@@ -512,7 +507,7 @@ class SharedMainHandler(webapp.RequestHandler):
     sharing with others.'''
     def get(self, metrics, configs, filesets, commits, filenames, opentrees):
         # Note that we also must keep track of which trees are open
-        devel = development()
+        devel = util.development()
 
         values = {
             "metrics": urllib.unquote(metrics),
