@@ -185,6 +185,7 @@ class ImportCommitHandler(webapp.RequestHandler):
 
     def post(self):
         assert util.development() or oauth.is_current_user_admin()
+        util.log_upload_data(self.request.path, self.request.get("data"))
         gerrit.poll()
         data = StringIO.StringIO(self.request.get("data"))
         new_commits = []

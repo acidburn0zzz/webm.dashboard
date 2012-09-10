@@ -37,3 +37,12 @@ def development():
         return True
     else:
         return False
+
+def log_upload_data(path, data):
+    import model
+    from google.appengine.ext import db
+    from google.appengine.api import oauth
+
+    data = db.Text(data)
+    user = oauth.get_current_user()
+    model.DataUploadLog(user=user, path=path, data=data).put()

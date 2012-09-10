@@ -21,6 +21,12 @@ from cache import CachedDataView, GlobalDataView
 import datetime
 import pickle
 
+class DataUploadLog(db.Model):
+    user = db.UserProperty()
+    time = db.DateTimeProperty(auto_now_add=True)
+    path = db.StringProperty()
+    data = db.TextProperty()
+
 class Metric(db.Model):
     # key_name is the metric name (a less pretty version of display name)
     display_name = db.StringProperty()

@@ -48,6 +48,7 @@ OAUTH_SCOPE = 'https://www.googleapis.com/auth/userinfo.email'
 class ImportMetricHandler(webapp.RequestHandler):
     def post(self):
         assert util.development() or oauth.is_current_user_admin()
+        util.log_upload_data(self.request.path, self.request.get("data"))
         data = StringIO.StringIO(self.request.get("data"))
         for line in data:
             data = json.loads(line)
@@ -64,6 +65,7 @@ class ImportMetricHandler(webapp.RequestHandler):
 class ImportFileSetHandler(webapp.RequestHandler):
     def post(self):
         assert util.development() or oauth.is_current_user_admin()
+        util.log_upload_data(self.request.path, self.request.get("data"))
         files_added = {}
         data = StringIO.StringIO(self.request.get("data"))
         for line in data:
@@ -95,6 +97,7 @@ class ImportFileSetHandler(webapp.RequestHandler):
 class ImportCodecMetricHandler(webapp.RequestHandler):
     def put_metric_index(self, parent, metrics, files):
         assert util.development() or oauth.is_current_user_admin()
+        util.log_upload_data(self.request.path, self.request.get("data"))
         if metrics and files:
             metric_list = list(metrics)
             file_list = list(files)
