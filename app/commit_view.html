@@ -31,6 +31,7 @@
 
 <!-- our js utils file, shared with index.html -->
 <script type="text/javascript" src="/js/utils.js"></script>
+<script type="text/javascript" src="/js/chartutils.js"></script>
 
 <!-- the AJAX API for google charts -->
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
@@ -46,7 +47,8 @@ function ChartFillerCaller(input) {
   var baseline = input[4];
 
   $("#chartdialog").dialog('option', 'title', input.slice(0, 3).join(', '));
-  ChartFiller(metric, config, filename, commit, baseline);
+  ChartFiller_Commit(metric, config, filename, commit, baseline, 'chartdiv',
+                     'chartdialog', null, 'configInfo', 'status');
 }
 
 function linkToBaseline(baseline) {
@@ -57,377 +59,12 @@ function linkToBaseline(baseline) {
   newWindow.focus();
 }
 
-// ----------------------------------------------------------------------------
-function ChartFiller(metric, config, file, commit, baseline) {
-  var dist_responses = new Array();
-  var bar_responses = new Array();
-
-  // Wait until all data is fetched to generate graphs
-  $(document).ajaxStop(function() {
-    $(this).unbind("ajaxStop");
-    if (dist_responses.length > 0) {
-      drawChart(dist_responses);
-    }
-
-    if (bar_responses.length > 0) {
-      drawChart2(bar_responses);
-    }
-  });
-
-  // Add the baseline to the list of commits, if one is set
-  var commits = [commit, baseline];
-
-  // one series per commit
-  if (bar_responses.length == 0 && !is_distortion(metric))
-    for (var t = 0; t < commits.length; t++)
-      bar_responses[t] = new Array();
-
-  for (var t = 0; t < commits.length; t++) {
-
-    // We put together a url
-    var commit = commits[t];
-    metricurl = "/metric-data/" + metric + "/" + config + "/" + file + "/" + commit
-
-    // pretty-up commit hash
-    if (commit === baseline)
-      commit = commit.slice(0,9) + " (Baseline)";
-    else
-      commit = commit.slice(0,9);
-
-    // Build a more readable version of the series name
-    var series_name = []
-
-    if (is_distortion(metric)) {
-      series_name.push(commit);
-      series_name = {label: series_name.join(" "), commit: commit};
-      FetchMetric(metricurl, series_name, dist_responses);
-    } else {
-      series_name.push(file);
-      series_name = {label: series_name.join(" "), commit: commit};
-      FetchMetric(metricurl, series_name, bar_responses[t]);
-    }
-  }
-}
-
-
-function drawChart(data_in) {
-  var numCurves = data_in.length;
-  var view;
-  var data2;
-
-  // We have at least one curve
-  data_in1 = data_in[0].response;
-
-  var data1 = new google.visualization.DataTable();
-  data1.addColumn('number', 'Bitrate');
-  data1.addColumn('number', 'target bitrate');
-  data1.addColumn('number', data_in[0].series_name.label);
-  data1.addRows(data_in1.data);
-  view = new google.visualization.DataView(data1);
-
-  for (var i = 1; i < numCurves; i++){
-    data_in2 = data_in[i].response.data;
-    data2 = new google.visualization.DataTable();
-    data2.addColumn('number', 'Bitrate');
-    data2.addColumn('number', 'target bitrate');
-    data2.addColumn('number',  data_in[i].series_name.label);
-
-    data2.addRows(data_in2);
-
-    // Join the two tables into one view
-    leftColumns = range(2, i + 1);
-    view = new google.visualization.data.join(view, data2, 'full', [[0,0], [1,1]], leftColumns, [2]);
-
-  }
-
-  // Set chart options
-  var chartOptions = {title:'Rate Distortion Curves',
-                 width: 750,
-                 height: 530,
-                 vAxis: {title: data_in1.yaxis},
-                 hAxis: {title: 'Bitrate'},
-                 'pointSize':2,
-                 'lineWidth':1,
-                 'interpolateNulls':true,
-                };
-  var tableOptions = {width: 'automatic'};
-
-  // We filter out target_bitrate for the sake of the chart
-  chart_view = new google.visualization.DataView(view);
-  chart_view.hideColumns([1]);
-
-  // Instantiate and draw our chart, passing in some options.
-  var chart = new google.visualization.LineChart(document.getElementById('chartdiv'));
-  $('#chartdialog').dialog({height: 600, width: 800}).dialog('open');
-  chart.draw(chart_view, chartOptions);
-
-  // Add our selection handler.
-  google.visualization.events.addListener(chart, 'select', selectHandler);
-  google.visualization.events.addListener(chart, 'onmouseover', chartMouseOver);
-
-  // The selection handler.
-  function selectHandler() {
-    var selection = chart.getSelection();
-    chart.setSelection();
-    for (var i = 0; i < selection.length; i++) {
-      var item = selection[i];
-      var commits = new Array();
-      var baseline = '';
-
-      // If we click something in the legend
-      if (item.column != null && item.row == null) {
-        // We get all the series labels
-        for (var j = 0; j < numCurves; j++){
-          var commit = data_in[j].series_name.label;
-          var lastchar = commit[commit.length-1];
-          if (lastchar === ')')
-            baseline = data_in[j].commit;
-        }
-
-        linkToBaseline(baseline);
-      }
-
-      // If we click on a data point
-      else if (item.column != null && item.row != null) {
-        var metric = data_in[item.column - 1].metric;
-        var config = data_in[item.column - 1].config;
-        var filename = data_in[item.column - 1].filename;
-        var commit = data_in[item.column - 1].commit;
-        var bitrate = view.getValue(item.row, 1);
-
-        // We need metric, file, config, and commit for this data point
-        var url = metric + "/" + config + '/' + filename + '/' + commit + '/' +
-                  bitrate;
-
-        $("#configInfo").dialog('close');
-        $("#configInfo").html("Loading...");
-        $("#configInfo").load("/config-info/" + url);
-        $('#configInfo').dialog('open');
-      }
-
-    }
-  }
-
-  function chartMouseOver(e){
-    pointDifference(e.row, e.column)
-  }
-
-  function pointDifference(row, col){
-    // ported over from visualmetrics.py
-    if(!row || !col)
-      return;
-
-    var cols = chart_view.getNumberOfColumns();
-    var rows = chart_view.getNumberOfRows();
-
-    var sel_bitrate = chart_view.getValue(row, 0 );
-    var sel_metric = chart_view.getValue(row, col);
-
-    var message = "At " + sel_metric.toFixed(2) + " decibels, <em>"
-    message = message + chart_view.getColumnLabel(col) + "</em> is <ul>"
-
-    for( var i=1;i<cols;++i){
-
-      var metric_greatest_thats_less = 0;
-      var rate_greatest_thats_less = 0;
-      var metric_smallest_thats_greater = 999;
-      var rate_smallest_thats_greater = 0;
-
-      if(i==col)
-        continue;
-
-      // find the lowest metric for this column thats greater than sel_metric and
-      // the highest metric for this column thats less than the metric
-      for(var line_count = 0; line_count < rows; ++line_count) {
-        this_metric = chart_view.getValue(line_count, i)
-        this_rate = chart_view.getValue(line_count, 0)
-        if(!this_metric)
-          continue;
-
-        if(this_metric > metric_greatest_thats_less &&
-           this_metric < sel_metric) {
-          metric_greatest_thats_less = this_metric;
-          rate_greatest_thats_less = this_rate;
-        }
-        if(this_metric < metric_smallest_thats_greater &&
-          this_metric > sel_metric) {
-          metric_smallest_thats_greater = this_metric;
-          rate_smallest_thats_greater = this_rate;
-        }
-      }
-
-      if(rate_smallest_thats_greater == 0 || rate_greatest_thats_less == 0) {
-        message = message + " <li> Couldn't find a point on both sides.</li>"
-      }
-      else
-      {
-        metric_slope = ( rate_smallest_thats_greater - rate_greatest_thats_less) /
-            ( metric_smallest_thats_greater - metric_greatest_thats_less);
-
-        projected_rate = ( sel_metric - metric_greatest_thats_less) *
-            metric_slope + rate_greatest_thats_less;
-
-        difference = 100 * (projected_rate / sel_bitrate - 1);
-
-
-        if (difference > 0)
-          message = message + "<li>  " + difference.toFixed(2) +
-                    "% smaller than <em>" +
-                    chart_view.getColumnLabel(i) + "</em></li> "
-        else
-          message = message + "<li>  " + -difference.toFixed(2) +
-                    "% bigger than <em>" +
-                    chart_view.getColumnLabel(i) + "</em></li> "
-      }
-
-    }
-    message = message + "</ul>"
-    statusbar = document.getElementById('status');
-    statusbar.innerHTML = "<p>" + message + "</p>";
-    statusbar.style.display = 'block';
-  }
-
-}
-
-
-
-function drawChart2(data_in) {
-  // We make a candlestick chart
-
-  function find_min_avg_max(arr) {
-    var min_ele = arr[0];
-    var max_ele = arr[0];
-    var sum = 0;
-    var count = 0;
-    for (var k = 0; k < arr.length; k++) {
-      count += 1;
-      sum += arr[k];
-      if (arr[k] < min_ele)
-        min_ele = arr[k];
-      else if (arr[k] > max_ele)
-        max_ele = arr[k];
-    }
-    // we assume arr.length >= 1
-    return [min_ele, sum/count, sum/count, max_ele];
-  }
-
-  var mat = [[]]
-
-  // series labels, one per commit
-  mat[0][0] = "unused";
-  for (var series = 0; series < data_in.length; series++) {
-    var series_name = data_in[series][0].series_name;
-    for (var i = 0; i<4; i++)
-      mat[0][series*4 + i + 1] = series_name.commit;
-  }
-
-  // one table row per file
-  for (var rowidx = 0; rowidx < data_in[0].length; rowidx++) {
-    var row_label = data_in[0][rowidx].series_name.label;
-    var row = new Array(row_label);
-
-    // four columns per series (commit)
-    for (var series = 0; series < data_in.length; series++) {
-      var series_data = data_in[series][rowidx].response.data;
-      var comparr = [];
-      for (var i = 0; i < series_data.length; i++) {
-        comparr[i] = series_data[i][0];
-      }
-      row = row.concat(find_min_avg_max(comparr));
-    }
-    mat[rowidx+1] = row;
-  }
-
-  // Convert to a data table and format for display
-  var formatter = new google.visualization.NumberFormat(
-      {fractionDigits: 3});
-  var data1 = new google.visualization.arrayToDataTable(mat, false);
-  for (var i = 1; i < mat[1].length; i++)
-      formatter.format(data1, i);
-  view = new google.visualization.DataView(data1);
-
-  // Set chart options
-  var chartOptions = {title:'Performance',
-                 width: 780,
-                 height: 530,
-                 vAxis: {title: data_in[0][0].response.yaxis},
-                };
-  var tableOptions = {width: 'automatic'};
-
-  // Instantiate and draw our chart, passing in some options.
-  var chart2 = new google.visualization.CandlestickChart(document.getElementById('chartdiv'));
-  $('#chartdialog').dialog({height: 600, width: 800}).dialog('open');
-  chart2.draw(view, chartOptions);
-
-  // We now add a function to resize the chart when the page is resized
-  $(window).resize(function() {
-    chart2.draw(view, chartOptions);
-  });
-
-  // Add our selection handler.
-  google.visualization.events.addListener(chart2, 'select', selectHandler);
-
-  // The selection handler.
-  function selectHandler() {
-    var selection = chart2.getSelection();
-    chart2.setSelection();
-
-    for (var i = 0; i < selection.length; i++) {
-      var item = selection[i];
-      var commits = new Array();
-      var baseline = '';
-
-      // If we click something in the legend
-      if (item.column != null && item.row == null) {
-        for (var j = 0; j < data_in.length; j++){
-          var series_name = data_in[j][0].series_name;
-          var commit = series_name.commit;
-          var lastchar = commit[commit.length-1];
-          if (lastchar === ')')
-            baseline = data_in[j][0].commit;
-        }
-
-        linkToBaseline(baseline);
-      }
-
-      // If we click on a data point
-      else if (item.column != null && item.row != null) {
-        var commit_start = view.getColumnLabel(item.column).slice(0,9);
-        var filename = view.getValue(item.row, 0);
-        var commit;
-        var metric;
-        var config;
-
-        // Is there a better way of corresponding points and thier set-ups?
-        for (var j = 0; j < data_in.length; j++) {
-          // here data_in[j] is an array of objects - each array being one commit
-          for (var k = 0; k < data_in[j].length; k++){
-            var obj = data_in[j][k];
-            if (obj.commit.slice(0,9) === commit_start){
-              metric = obj.metric;
-              commit = obj.commit;
-              config = obj.config;
-              break;
-            }
-          }
-        }
-
-        // We need metric, file, config, and commit for this data point
-        var url = metric + "/" + config + '/' + filename + '/' + commit + '/' + '';
-
-        $("#configInfo").dialog('close');
-        $("#configInfo").html("Loading...");
-        $("#configInfo").load("/config-info/" + url);
-        $('#configInfo').dialog('open');
-      }
-    }
-  }
-}
-
+// These apply to all charts in commit_view.html
+var chartOptions = {width: 750,
+                   height: 530};
 
 $(function() {
   $("#chartdialog").dialog({ autoOpen: false});
-  $("#thresholdDialog").dialog({ autoOpen: false});
   $("#configInfo").dialog({ autoOpen: false, width: 800, position: ['right','top']  });
   google.load('visualization', '1.0', {'packages':['corechart', 'table']});
 
@@ -435,7 +72,10 @@ $(function() {
     $('#status').html("");
   });
 });
+
 </script>
+</head>
+<body>
 
   <link rel="shortcut icon" href="/images/webm-48px.png">
   <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
