@@ -12,7 +12,8 @@ import os
 from optparse import OptionParser
 import sys
 import urllib
-import urllib2
+import urlparse
+import oauth2 as oauth
 
 COMMIT_UPLOAD_URL="/gerrit/import-commits"
 FILESET_UPLOAD_URL="/import-filesets"
@@ -26,72 +27,67 @@ CLIENT_SECRET = 'kEBk6qXuvUEE7j1JM0TsjXTT'
 CALLBACK_URI = 'urn:ietf:wg:oauth:2.0:oob'
 AUTH_URL='https://accounts.google.com/o/oauth2/auth'
 TOKEN_URL='https://accounts.google.com/o/oauth2/token'
+REQUEST_TOKEN_URL='%s/_ah/OAuthGetRequestToken'
+AUTHZ_TOKEN_URL='%s/_ah/OAuthAuthorizeToken'
+ACCESS_TOKEN_URL='%s/_ah/OAuthGetAccessToken'
 
 def parse_jsonfile(f):
   return json.loads(open(f, "r").read())
 
-def fetch_auth_token():
-  while True:
-    try:
-      # Auth request
-      params = {'response_type': 'code',
-                'client_id': '143135962842.apps.googleusercontent.com',
-                'redirect_uri': CALLBACK_URI,
-                'scope': 'https://www.googleapis.com/auth/userinfo.email',
-               }
-      url = '%s?%s'%(AUTH_URL, urllib.urlencode(params))
-      print "Please visit the following URL in your browser:"
-      print url
-      oauth_verifier = raw_input('What is the Access Code? ')
+def fetch_request_token(consumer, host):
+  oauth_client = oauth.Client(consumer)
+  resp, content = oauth_client.request(REQUEST_TOKEN_URL%host, "GET")
+  if resp['status'] != '200':
+    raise Exception("Invalid response %s." % resp['status'])
+  return dict(urlparse.parse_qsl(content))
 
-      # Get authorization token
-      params = {'code': oauth_verifier,
-                'client_id': CLIENT_ID,
-                'client_secret': CLIENT_SECRET,
-                'redirect_uri': CALLBACK_URI,
-                'grant_type' : 'authorization_code',
-                }
-      response = urllib2.urlopen(TOKEN_URL, urllib.urlencode(params))
-      authorization = json.loads(response.read())
-      return authorization
-    except urllib2.HTTPError:
-      print "Authorization failed. Try again."
+def fetch_authz_token(consumer, host):
+  request_token = fetch_request_token(consumer, host)
+  params = {'oauth_token': request_token['oauth_token']}
+  url = '%s?%s'%(AUTHZ_TOKEN_URL%host, urllib.urlencode(params))
+  print "Please visit the following URL in your browser:"
+  print url
+  oauth_verifier = raw_input('Press enter once verified...')
+  return request_token
 
-def save_auth_token(token, filename):
+def fetch_access_token(consumer, host):
+  request_token = fetch_authz_token(consumer, host)
+  token = oauth.Token(request_token['oauth_token'],
+                      request_token['oauth_token_secret'])
+  client = oauth.Client(consumer, token)
+  resp, content = client.request(ACCESS_TOKEN_URL%host, "POST")
+  if resp['status'] != '200':
+    raise Exception("Invalid response %s." % resp['status'])
+  return dict(urlparse.parse_qsl(content))
+
+def save_access_token(token, filename):
   fd = os.open(filename, os.O_CREAT | os.O_WRONLY, 0600)
   with os.fdopen(fd, 'w') as outfile:
-    record = {'refresh_token': token['refresh_token']}
-    outfile.write(json.dumps(record))
+    outfile.write(json.dumps(token))
 
-def fetch_refresh_token():
+def load_or_fetch_access_token(consumer, host):
   dotfile = os.path.join(os.path.expanduser("~"), '.webm-dashboard')
   try:
     data = parse_jsonfile(dotfile)
   except:
-    auth = fetch_auth_token()
-    save_auth_token(auth, dotfile)
+    data = fetch_access_token(consumer, host)
+    save_access_token(data, dotfile)
     data = parse_jsonfile(dotfile)
-  return data['refresh_token']
-
-def fetch_access_token():
-  # Send refresh request
-  params = {'refresh_token': fetch_refresh_token(),
-            'client_id': CLIENT_ID,
-            'client_secret': CLIENT_SECRET,
-            'grant_type': 'refresh_token',
-            }
-  response = urllib2.urlopen(TOKEN_URL, urllib.urlencode(params))
-  token = json.loads(response.read())
-  return token['access_token']
+  return oauth.Token(data['oauth_token'], data['oauth_token_secret'])
 
 def upload(secure, host, path, filehandle):
   protocol = {True: 'https', False: 'http'}[secure]
   url = '%s://%s%s'%(protocol, host, path)
   form = {'data': filehandle.read()}
   data = urllib.urlencode(form)
-  headers = {'Authorization': 'Bearer %s'%fetch_access_token()}
-  request = urllib2.Request(url, data, headers)
-  response = urllib2.urlopen(request)
+  consumer = oauth.Consumer(CLIENT_ID, CLIENT_SECRET)
+  oauth_host = '%s://%s'%(protocol, host)
+  token = load_or_fetch_access_token(consumer, oauth_host)
+  client = oauth.Client(consumer, token)
+  resp, content = client.request(url, "POST", data)
+  if resp['status'] != '200':
+    print content
+    raise Exception("Invalid response %s." % resp['status'])
 
 def main(argv=None):
   if argv is None:
@@ -115,11 +111,6 @@ def main(argv=None):
   if not opts.url:
     parser.print_help()
     return 1
-
-  # Install proxy handler
-  proxy = urllib2.ProxyHandler()
-  opener = urllib2.build_opener(proxy)
-  urllib2.install_opener(opener)
 
   for filename in args:
     if filename == "-":
