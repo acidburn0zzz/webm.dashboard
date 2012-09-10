@@ -502,6 +502,21 @@ class MainHandler(webapp.RequestHandler):
         if devel:
             values["development"] = True
 
+        self.response.out.write(template.render("home.html", values))
+
+
+class ExploreHandler(webapp.RequestHandler):
+    def get(self):
+        devel = util.development()
+
+        values = {
+            "user": users.get_current_user(),
+            "login_url": users.create_login_url("/"),
+            "logout_url": users.create_logout_url("/")
+        }
+        if devel:
+            values["development"] = True
+
         self.response.out.write(template.render("index.html", values))
 
 
@@ -748,6 +763,7 @@ class HistoryHandler(webapp.RequestHandler):
 def main():
     application = webapp.WSGIApplication([
         ('/', MainHandler),
+        ('/explore', ExploreHandler),
         ('/import-metrics', ImportMetricHandler),
         ('/import-filesets', ImportFileSetHandler),
         ('/import-codec-metrics', ImportCodecMetricHandler),
@@ -756,7 +772,7 @@ def main():
         (r'/config-info/(.*)/(.*)/(.*)/(.*)/(.*)', ConfigInfoHandler),
         (r'/metric-data/(.*)/(.*)/(.*)/(.*)', CodecMetricHandler),
         (r'/average-improvement/(.*)/(.*)/(.*)/(.*)', AverageImprovementHandler),
-        ('/(.*)/(.*)/(.*)/(.*)/(.*)/(.*)', SharedMainHandler),
+        ('/explore/(.*)/(.*)/(.*)/(.*)/(.*)/(.*)', SharedMainHandler),
         ('/graph', ChartHandler)
     ], debug=True)
     webapp_util.run_wsgi_app(application)
