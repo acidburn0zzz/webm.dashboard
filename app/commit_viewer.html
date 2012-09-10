@@ -3,15 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!--
-This file contains a wrapper to search for a commit's summary view. Most of
-the important functions are contained in commit_view.html
--->
+  <!--
+  This file contains a wrapper to search for a commit's summary view. Most of
+  the important functions are contained in commit_view.html
+  -->
   <title>Commit Viewer</title>
-<!--
-<link rel="stylesheet" type="text/css" href="/css/main.css"/>
-<link rel="stylesheet" type="text/css" href="/css/commit.css"/>
--->
   <link href="/css/bootstrap.css" rel="stylesheet">
   <link href="/css/bootstrap-responsive.css" rel="stylesheet">
   <link href="/css/dashboard.css" rel="stylesheet">
@@ -40,7 +36,7 @@ the important functions are contained in commit_view.html
 <!-- the AJAX API for google charts -->
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
 <script type="text/javascript">
-google.load('visualization', '1.0', {'packages':['corechart', 'table']});
+    google.load('visualization', '1.0', {'packages':['corechart', 'table']});
 
 // These apply to all charts in commit_view.html
 var chartOptions = {width: 720,
@@ -55,7 +51,7 @@ $(function() {
   });
 });
 
-</script>
+  </script>
 
   <link rel="shortcut icon" href="/images/webm-48px.png">
   <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
