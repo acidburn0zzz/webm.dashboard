@@ -297,6 +297,12 @@ function initTrees(){
 $(document).ready(function () {
 
   $( "#tabs" ).tabs();
+
+  $('#treeView1').html("Loading...");
+  $('#treeView2').html("Loading...");
+  $('#treeView3').html("Loading...");
+  $('#treeView4').html("Loading...");
+
   initTrees();
 
 });
