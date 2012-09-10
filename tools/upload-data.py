@@ -14,6 +14,7 @@ import sys
 import urllib
 import urlparse
 import oauth2 as oauth
+import httplib2
 
 COMMIT_UPLOAD_URL="/gerrit/import-commits"
 FILESET_UPLOAD_URL="/import-filesets"
@@ -30,12 +31,13 @@ TOKEN_URL='https://accounts.google.com/o/oauth2/token'
 REQUEST_TOKEN_URL='%s/_ah/OAuthGetRequestToken'
 AUTHZ_TOKEN_URL='%s/_ah/OAuthAuthorizeToken'
 ACCESS_TOKEN_URL='%s/_ah/OAuthGetAccessToken'
+PROXY_INFO=httplib2.ProxyInfo.from_environment()
 
 def parse_jsonfile(f):
   return json.loads(open(f, "r").read())
 
 def fetch_request_token(consumer, host):
-  oauth_client = oauth.Client(consumer)
+  oauth_client = oauth.Client(consumer, proxy_info=PROXY_INFO)
   resp, content = oauth_client.request(REQUEST_TOKEN_URL%host, "GET")
   if resp['status'] != '200':
     raise Exception("Invalid response %s." % resp['status'])
@@ -54,7 +56,7 @@ def fetch_access_token(consumer, host):
   request_token = fetch_authz_token(consumer, host)
   token = oauth.Token(request_token['oauth_token'],
                       request_token['oauth_token_secret'])
-  client = oauth.Client(consumer, token)
+  client = oauth.Client(consumer, token, proxy_info=PROXY_INFO)
   resp, content = client.request(ACCESS_TOKEN_URL%host, "POST")
   if resp['status'] != '200':
     raise Exception("Invalid response %s." % resp['status'])
@@ -83,7 +85,7 @@ def upload(secure, host, path, filehandle):
   consumer = oauth.Consumer(CLIENT_ID, CLIENT_SECRET)
   oauth_host = '%s://%s'%(protocol, host)
   token = load_or_fetch_access_token(consumer, oauth_host)
-  client = oauth.Client(consumer, token)
+  client = oauth.Client(consumer, token, proxy_info=PROXY_INFO)
   resp, content = client.request(url, "POST", data)
   if resp['status'] != '200':
     print content
