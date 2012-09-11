@@ -1,6 +1,27 @@
 // search.js
 // Contains utilities to search for a commit
 
+function ChartFillerCaller(input) {
+  input = input.split(',');
+  var metric = input[0];
+  var config = input[1];
+  var filename = input[2];
+  var commit = input[3];
+  var baseline = input[4];
+
+  $("#chartdialog").dialog('option', 'title', input.slice(0, 3).join(', '));
+  ChartFiller_Commit(metric, config, filename, commit, baseline, 'chartdiv',
+                     'chartdialog', null, 'configInfo', 'status');
+}
+
+function linkToBaseline(baseline) {
+  // Note: with js, there is no way to force this to open in a new tab, rather
+  // than a window.
+  var url = "/commit_viewer/" + baseline;
+  newWindow = window.open(url, '_blank');
+  newWindow.focus();
+}
+
 
 function searchcommits(form){
 
