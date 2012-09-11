@@ -114,6 +114,9 @@ def main(argv=None):
     parser.print_help()
     return 1
 
+  # Force https to prod
+  secure = opts.secure or 'appspot' in opts.host
+
   for filename in args:
     if filename == "-":
       upload(opts.secure, opts.host, opts.url, sys.stdin)
