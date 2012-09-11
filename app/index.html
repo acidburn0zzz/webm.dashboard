@@ -22,7 +22,7 @@
   <!-- script type="text/javascript" src="/js/jstree/_lib/jquery.js"></script -->
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.js"></script>
   <script type="text/javascript" src="/js/jstree/jquery.jstree.js"></script>
-  <link rel="stylesheet" type="text/css" href="/js/jquery-ui/css/smoothness/jquery-ui-1.8.21.custom.css" />
+  <link rel="stylesheet" type="text/css" href="/js/jquery-ui/css/custom-theme/jquery-ui-1.8.23.custom.css" />
   <script type="text/javascript" src="/js/jquery-ui/js/jquery-ui-1.8.21.custom.min.js"></script>
   <script type="text/javascript" src="/js/json2.js"></script>
   <!-- A file with useful js functions -->
@@ -212,8 +212,8 @@ $(function() {
   $("#sharedialog").dialog({ autoOpen: false, width: 800 });
   $("#sharebutton").bind('click', share);
 
-  $("#commitInfo").dialog({ autoOpen: false, width: 800, position: ['right','60px']  });
-  $("#configInfo").dialog({ autoOpen: false, width: 800, position: ['right','60px']  });
+  $("#commitInfo").dialog({ autoOpen: false, width: 800, position: ['right', 60]  });
+  $("#configInfo").dialog({ autoOpen: false, width: 800, position: ['right', 60]  });
   $('#container').hide();
 
   // This hides the whitespace used for storing the chart
@@ -238,9 +238,9 @@ function share() {
   var url;
 
   if (development)
-    url = "localhost:8080/explore";
+    url = "localhost:8080/explore/";
   else
-    url = "http://www.dashboard.webmproject.org/explore";
+    url = "http://www.dashboard.webmproject.org/explore/";
 
   var metrics = MetricState.join(",");
   var configs = ConfigState.join(",");
@@ -350,13 +350,13 @@ Help
 </a>
 &nbsp;|&nbsp;
 -->
-<!--
-<div id="edialog" title="Share this view">
+
+<div id="sharedialog" title="Share this view">
 To share the current view with someone else, use this custom url below:
 <div id="shareurl">
 </div>
 </div>
--->
+
 <!--
 <a href="#null" id="sharebutton" style="display:table-cell; vertical-align: middle;">
 Share
