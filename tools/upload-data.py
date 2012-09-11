@@ -31,7 +31,20 @@ TOKEN_URL='https://accounts.google.com/o/oauth2/token'
 REQUEST_TOKEN_URL='%s/_ah/OAuthGetRequestToken'
 AUTHZ_TOKEN_URL='%s/_ah/OAuthAuthorizeToken'
 ACCESS_TOKEN_URL='%s/_ah/OAuthGetAccessToken'
-PROXY_INFO=httplib2.ProxyInfo.from_environment()
+
+# Proxy setup
+def get_proxy_info():
+  try:
+    http_proxy = os.environ['http_proxy']
+    if not http_proxy:
+      return None
+  except KeyError:
+    return None
+
+  host_port = http_proxy.split('/')[-1]
+  host, port = host_port.split(':')
+  return httplib2.ProxyInfo(httplib2.socks.PROXY_TYPE_HTTP, host, int(port))
+PROXY_INFO=get_proxy_info()
 
 def parse_jsonfile(f):
   return json.loads(open(f, "r").read())
