@@ -762,6 +762,13 @@ class HistoryHandler(webapp.RequestHandler):
         html = re.sub(GERRIT_LINK_PATTERN, gerrit_link, html)
         self.response.out.write(html)
 
+class WarmupHandler(webapp.RequestHandler):
+    def get(self):
+        # Prime caches
+        for commit in model.commits():
+            pass
+        drilldown.query('', '', '', '')
+
 def main():
     application = webapp.WSGIApplication([
         ('/', MainHandler),
@@ -775,7 +782,8 @@ def main():
         (r'/metric-data/(.*)/(.*)/(.*)/(.*)', CodecMetricHandler),
         (r'/average-improvement/(.*)/(.*)/(.*)/(.*)', AverageImprovementHandler),
         ('/explore/(.*)/(.*)/(.*)/(.*)/(.*)/(.*)', SharedMainHandler),
-        ('/graph', ChartHandler)
+        ('/graph', ChartHandler),
+        ('/_ah/warmup', WarmupHandler),
     ], debug=True)
     webapp_util.run_wsgi_app(application)
 

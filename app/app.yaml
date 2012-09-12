@@ -7,6 +7,9 @@ builtins:
 - appstats: on
 - remote_api: on
 
+inbound_services:
+- warmup
+
 handlers:
 - url: /css
   static_dir: css
@@ -28,6 +31,10 @@ handlers:
 
 - url : /commit_viewer/.*
   script: commit_view.py
+
+- url: /_ah/warmup
+  login: admin
+  script: main.py
 
 - url: .*
   script: main.py
