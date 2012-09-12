@@ -200,12 +200,6 @@ function ChartFiller(baseline) {
 
 <script>
 $(function() {
-  $( "#topcenter" ).resizable({
-    handles: 's',
-    stop: function(event, ui) {
-      $(this).css("width", '');
-    }
-  });
   $("#helpdialog").dialog({ autoOpen: false, width: 800 });
   $("#helpbutton").bind('click', help);
 
@@ -454,10 +448,6 @@ Share
 {% include "templates/footer.html" %}
 
     </div><!-- End container -->
-
-<!-- TODO: can we locate the icon at S, rather than SE? -->
-<div unselectable="on" style="z-index: 1001; -moz-user-select: none;"
-class="ui-resizable-handle ui-resizable-se ui-icon ui-icon-arrowthick-2-n-s"></div>
 
 <div id="bottomcenter">
 
