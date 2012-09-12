@@ -197,6 +197,7 @@ def GlobalDataView(view):
                 cls._counter = None
                 cls._key = (cls.__name__
                             + GLOBAL_CACHE_INVALIDATION_COUNTER)
+            cls._refresh()
             return cls._instance
 
         @classmethod
