@@ -24,7 +24,6 @@
 
 <!-- The majority of our javascript -->
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.js"></script>
-<script type="text/javascript" src="/js/jstree/jquery.jstree.js"></script>
   <link rel="stylesheet" type="text/css" href="/js/jquery-ui/css/custom-theme/jquery-ui-1.8.23.custom.css" />
 <script type="text/javascript" src="/js/jquery-ui/js/jquery-ui-1.8.21.custom.min.js"></script>
 <script type="text/javascript" src="/js/json2.js"></script>
@@ -39,26 +38,7 @@
 <script type="text/javascript">
 google.load('visualization', '1.0', {'packages':['corechart', 'table']});
 
-function ChartFillerCaller(input) {
-  input = input.split(',');
-  var metric = input[0];
-  var config = input[1];
-  var filename = input[2];
-  var commit = input[3];
-  var baseline = input[4];
 
-  $("#chartdialog").dialog('option', 'title', input.slice(0, 3).join(', '));
-  ChartFiller_Commit(metric, config, filename, commit, baseline, 'chartdiv',
-                     'chartdialog', null, 'configInfo', 'status');
-}
-
-function linkToBaseline(baseline) {
-  // Note: with js, there is no way to force this to open in a new tab, rather
-  // than a window.
-  var url = "/commit_viewer/" + baseline;
-  newWindow = window.open(url, '_blank');
-  newWindow.focus();
-}
 
 // These apply to all charts in commit_view.html
 var chartOptions = {width: 720,
@@ -67,7 +47,6 @@ var chartOptions = {width: 720,
 $(function() {
   $("#chartdialog").dialog({ autoOpen: false});
   $("#configInfo").dialog({ autoOpen: false, width: 800, position: ['right', 60]  });
-  google.load('visualization', '1.0', {'packages':['corechart', 'table']});
 
   $("#chartdialog").bind("dialogclose", function(event, ui) {
     $('#status').html("");
