@@ -132,9 +132,9 @@ def main(argv=None):
 
   for filename in args:
     if filename == "-":
-      upload(opts.secure, opts.host, opts.url, sys.stdin)
+      upload(secure, opts.host, opts.url, sys.stdin)
     else:
-      upload(opts.secure, opts.host, opts.url, open(filename))
+      upload(secure, opts.host, opts.url, open(filename))
 
 if __name__ == "__main__":
   sys.exit(main())
