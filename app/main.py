@@ -348,6 +348,7 @@ def mean_improvement(base_data, data):
     mean = sum0(data) / len(data)
     return (mean / base_mean - 1) * 100
 
+@cache_result()
 def calculate_improvement(m, cfg, fs, cm, base_data, composite_fn):
     '''Calculates the average improvement given the set up and the parent
     commit, caching the result'''
@@ -368,6 +369,7 @@ def calculate_improvement(m, cfg, fs, cm, base_data, composite_fn):
     return None, result
 
 class AverageImprovementHandler(webapp.RequestHandler):
+    @cache_result()
     def get_adhoc_improvement(self, metrics, configs, filenames, commits):
         """Calculates the requested composite metrics and outputs as JSON"""
         # Find the baseline based on the raw URL variables

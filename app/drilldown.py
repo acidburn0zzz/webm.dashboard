@@ -133,6 +133,7 @@ class JSTreeNode(object):
     def add_child(self, child):
         self._children.append(child)
 
+@cache_result()
 def commit_tree_formatter(commit_cache):
     change_nodes = {}
     branch_nodes = {}
@@ -237,6 +238,7 @@ def commit_tree_formatter(commit_cache):
         result.append(node.dump())
     return result
 
+@cache_result()
 def tree_formatter(query_result):
     #memcache.flush_all(); # For debugging
 
