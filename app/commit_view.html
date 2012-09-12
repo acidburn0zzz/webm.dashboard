@@ -4,10 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Commit Summary</title>
-<!--
-<link rel="stylesheet" type="text/css" href="/css/main.css"/>
-<link rel="stylesheet" type="text/css" href="/css/commit.css"/>
--->
   <link href="/css/bootstrap.css" rel="stylesheet">
   <link href="/css/bootstrap-responsive.css" rel="stylesheet">
   <link href="/css/dashboard.css" rel="stylesheet">
@@ -22,40 +18,36 @@
     <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
   <![endif]-->
 
-<!-- The majority of our javascript -->
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.js"></script>
   <link rel="stylesheet" type="text/css" href="/js/jquery-ui/css/custom-theme/jquery-ui-1.8.23.custom.css" />
-<script type="text/javascript" src="/js/jquery-ui/js/jquery-ui-1.8.21.custom.min.js"></script>
-<script type="text/javascript" src="/js/json2.js"></script>
+  <script type="text/javascript" src="/js/jquery-ui/js/jquery-ui-1.8.21.custom.min.js"></script>
+  <script type="text/javascript" src="/js/json2.js"></script>
 
-<!-- our js utils file, shared with index.html -->
-<script type="text/javascript" src="/js/utils.js"></script>
-<script type="text/javascript" src="/js/chartutils.js"></script>
+  <!-- our js utils file, shared with index.html -->
+  <script type="text/javascript" src="/js/utils.js"></script>
+  <script type="text/javascript" src="/js/chartutils.js"></script>
 <script type="text/javascript" src="/js/commit_search.js"></script>
 
-<!-- the AJAX API for google charts -->
-<script type="text/javascript" src="https://www.google.com/jsapi"></script>
-<script type="text/javascript">
-google.load('visualization', '1.0', {'packages':['corechart', 'table']});
+  <!-- the AJAX API for google charts -->
+  <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+  <script type="text/javascript">
+    google.load('visualization', '1.0', {'packages':['corechart', 'table']});
 
 
 
-// These apply to all charts in commit_view.html
+    // These apply to all charts in commit_view.html
 var chartOptions = {width: 720,
                    height: 500};
 
-$(function() {
-  $("#chartdialog").dialog({ autoOpen: false});
+    $(function() {
+      $("#chartdialog").dialog({ autoOpen: false});
   $("#configInfo").dialog({ autoOpen: false, width: 800, position: ['right', 60]  });
 
-  $("#chartdialog").bind("dialogclose", function(event, ui) {
-    $('#status').html("");
-  });
-});
-
-</script>
-</head>
-<body>
+      $("#chartdialog").bind("dialogclose", function(event, ui) {
+        $('#status').html("");
+      });
+    });
+  </script>
 
   <link rel="shortcut icon" href="/images/webm-48px.png">
   <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
@@ -114,14 +106,11 @@ $(function() {
 
   <div class="container-fluid">
 
-<!-- start save -->
-<!-- divs for pop up dialogs -->
-<div id="chartdialog">
-  <div id="chartdiv"></div>
-  <div id="status"></div>
-</div>
-<div id="configInfo"></div>
-<!-- end save -->
+    <div id="chartdialog">
+      <div id="chartdiv"></div>
+      <div id="status"></div>
+    </div>
+    <div id="configInfo"></div>
 
 {% if error %}
     <div class="row-fluid" id="">
