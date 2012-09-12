@@ -14,7 +14,9 @@
     {% endfor %}
 </div>
 <script>
-  $('#accordion').accordion({ collapsible: true });
+  $('#accordion').accordion({ collapsible: true,
+                              autoHeight: false,
+  });
 </script>
 
 {% if baseline %}
