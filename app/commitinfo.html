@@ -4,6 +4,8 @@
     <h3><a href="#">{{ commit.commit }} - {{ commit.subject }}</a></h3>
     <div>
         <dl>
+            <dt><a href="/commit_viewer/{{ commit.commitid }}" target='_blank'>Go to Commit View page</a></dt>
+              <dd>{{ commit.commitid }}</dd>
             <dt>Author</dt><dd>{{ commit.author }}</dd>
             <dt>Date</dt><dd>{{ commit.date }}</dd>
         </dl>
@@ -25,6 +27,8 @@
     <h3><a href="#">{{ baseline.commit }} - {{ baseline.subject }}</a></h3>
     <div>
         <dl>
+            <dt><a href="/commit_viewer/{{ baseline.commitid }}" target='_blank'>Go to Commit View page</a></dt>
+              <dd>{{ baseline.commitid }}</dd>
             <dt>Author</dt><dd>{{ baseline.author }}</dd>
             <dt>Date</dt><dd>{{ baseline.date }}</dd>
         </dl>

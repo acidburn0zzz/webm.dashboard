@@ -71,7 +71,22 @@ function commitTreeConfig(TreeModel) {
               window.focus();
             },
             //"_disabled" : ($node).attr("id")[0] === "_" ? true : false,
-            "_disabled" : false,
+            "_disabled" : !($.jstree._reference("#treeView4").is_leaf($node)),
+          },
+          gotoCommitViewItem : {
+            "label" : "Go to Commit View",
+            "action" : function(obj) {
+              // We open the gerrit link in a new tab
+              patchid = ($node).attr("id")
+              if (!($.jstree._reference("#treeView4").is_leaf($node))) { // This is a parent node
+                children = ($node).children("ul").children("li");
+                patchid = (children).attr("id");
+              }
+              var url = "/commit_viewer/" + patchid;
+              window.open(url, '_blank');
+              window.focus();
+            },
+            "_disabled" : !($.jstree._reference("#treeView4").is_leaf($node)),
           },
         }
       }

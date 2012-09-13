@@ -16,7 +16,7 @@
           <a id="{{commit.commit}}_b" class="ui-icon ui-icon-circle-plus"></a>
           {% endif %}
         </td>
-        <td width="10em">{{ commit.commit }}</td>
+        <td width="10em"><a href="/commit_viewer/{{ commit.commitid }}" target='_blank'>{{ commit.commit }}</a></td>
         <td width="25%">{{ commit.author }}</td>
         <td>
             <div>{{ commit.subject }}</div>

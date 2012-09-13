@@ -613,6 +613,7 @@ class CommitInfoHandler(webapp.RequestHandler):
             message = commit_data.message.split("\n")
             nonempty_lines = sum(map(bool, message))
             data = {'commit': commit_data.key().name()[:9],
+                    'commitid': commit_data.key().name(),
                     'author': commit_data.author,
                     'subject': message[0],
                     'body': message[1:],
@@ -625,6 +626,7 @@ class CommitInfoHandler(webapp.RequestHandler):
             message = commit_data.message.split("\n")
             nonempty_lines = sum(map(bool, message))
             baseline = {'commit': commit_data.key().name()[:9],
+                        'commitid': commit_data.key().name(),
                         'author': commit_data.author,
                         'subject': message[0],
                         'body': message[1:],
@@ -744,6 +746,7 @@ class HistoryHandler(webapp.RequestHandler):
             message = commit_data.message.split("\n")
             nonempty_lines = sum(map(bool, message))
             data = {'commit': commit_data.key().name()[:9],
+                    'commitid': commit_data.key().name(),
                     'author': commit_data.author,
                     'subject': message[0],
                     'body': message[1:],
